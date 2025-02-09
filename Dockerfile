@@ -6,6 +6,9 @@ FROM node:${NODE_VERSION}-slim AS base
 
 LABEL fly_launch_runtime="Node.js"
 
+# ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg
+
 # Node.js app lives here
 WORKDIR /app
 

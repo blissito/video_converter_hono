@@ -1,5 +1,4 @@
 import { Agenda } from "@hokify/agenda";
-import { fileExist } from "react-hook-multipart";
 
 export type VIDEO_SIZE = "360p" | "480p" | "720p" | "1080p" | "2040p";
 
@@ -8,6 +7,7 @@ const MACHINES_API_URL =
 // const INTERNAL_WORKER_URL = `http://worker.process.video-converter-hono.internal:3000`;
 
 export const startMachineCreationDetached = async (
+  options: { storageKey: string; sizeName: string },
   FLY_BEARER_TOKEN: string
 ) => {
   const machineId = await createMachine({
@@ -29,10 +29,14 @@ export const startMachineCreationDetached = async (
     const INTERNAL_HOST = `http://${machineId}.vm.video-converter-hono.internal:8000`;
     const url = new URL(INTERNAL_HOST);
     url.pathname = "/internal";
-    url.searchParams.set("storageKey", "perro");
-    url.searchParams.set("size", "360p");
+    url.searchParams.set("storageKey", options.storageKey);
+    url.searchParams.set("sizeName", options.sizeName);
     url.searchParams.set("machineId", machineId);
     const res = await fetch(url.toString(), { method: "POST" }); // delegating
+    if (!res.ok) {
+      await stopMachine(machineId, FLY_BEARER_TOKEN);
+      console.log("::MACHINE_STOPED::");
+    }
     console.log("::DELEGATION_RESPONSE::", res.ok);
   });
   await agenda.start();
@@ -56,38 +60,6 @@ export const createMachineAndWaitToBeReady = async (
 
   await waitForMachineToStart(machineId, FLY_BEARER_TOKEN);
   return machineId;
-};
-
-export const createVersionDetached = async (
-  storageKey: string,
-  size: VIDEO_SIZE
-) => {
-  // @todo: if exists avoid
-  const playListPath = `animaciones/chunks/${storageKey}/${size}.m3u8`;
-  const exist = await fileExist(playListPath);
-  if (exist) {
-    return console.info("VERSION_ALREADY_EXIST_ABORTING", size);
-  }
-  const agenda = new Agenda({
-    db: { address: process.env.DATABASE_URL as string },
-  });
-  agenda.define("create_chunks", async () => {
-    console.log("CREATING::PERFORMANCE::MACHINE::");
-    const machineId = await createMachine({
-      image: await listMachinesAndFindImage(),
-    });
-    if (!machineId) return console.error("ERROR_ON_MACHINE_CREATION");
-
-    await waitForMachineToStart(machineId);
-    await delegateToPerformanceMachine({
-      size,
-      machineId,
-      storageKey,
-      intent: "generate_video_version",
-    });
-  });
-  await agenda.start();
-  await agenda.schedule("in 2 seconds", "create_chunks");
 };
 
 const createMachine = async ({
@@ -135,13 +107,20 @@ const createMachine = async ({
 
 export const stopMachine = (machineId: string) => async () => {
   if (!machineId) return;
-  const id: string = machineId;
+
+  console.log("TENEMOSTOKEN", process.env.FLY_BEARER_TOKEN);
   const init: RequestInit = {
     method: "POST",
-    headers: { Authorization: `Bearer ${process.env.FLY_BEARER_TOKEN}` },
-  }; // @todo
-  const response = await fetch(`${MACHINES_API_URL}/${id}/stop`, init);
-  if (!response.ok) return console.error("La maquina no se detuvo", response);
+    headers: {
+      Authorization: `Bearer ${process.env.FLY_BEARER_TOKEN}`,
+    },
+  };
+  const response = await fetch(`${MACHINES_API_URL}/${machineId}/stop`, init);
+  console.log("STOP_RESPONSE::", response);
+  if (!response.ok) {
+    console.error("La maquina no se detuvo", response);
+    return false;
+  }
   console.log("PERFORMANCE_MACHINE_STOPED");
   return true;
 };
