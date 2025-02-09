@@ -104,8 +104,8 @@ const createMachine = async ({
   console.log("::MAQUINA_CREADA::", name, id);
   return id;
 };
-
-export const stopMachine = (machineId: string) => async () => {
+// @todo revisit
+export const stopMachine = async (machineId: string) => {
   if (!machineId) return;
 
   console.log("TENEMOSTOKEN", process.env.FLY_BEARER_TOKEN);
@@ -125,63 +125,10 @@ export const stopMachine = (machineId: string) => async () => {
   return true;
 };
 
-// @todo could this be generic?
-const delegateToPerformanceMachine = async ({
-  machineId,
-  storageKey,
-  path = "/admin",
-  intent = "experiment",
-  size,
-}: {
-  size?: VIDEO_SIZE;
-  machineId: string;
-  storageKey: string;
-  path?: string;
-  intent?: string;
-}) => {
-  const body = new FormData();
-  body.append("intent", intent);
-  body.append("storageKey", storageKey);
-  const init: RequestInit = {
-    method: "POST",
-    body,
-  };
-  const internal_host = `http://${machineId}.vm.animations.internal:3000`;
-  try {
-    const response = await fetch(
-      `${internal_host}${path}?machineId=${machineId}&size=${size}`,
-      init
-    );
-    if (!response.ok) {
-      console.error("::ERROR_ON_INTERNAL_REQUEST::", response);
-      stopMachine(machineId);
-    }
-  } catch (e) {
-    stopMachine(machineId);
-  }
-  console.log("::RESPONSE_OK::", response.ok);
-};
-
-const startMachine = async (id: string) => {
-  const init: RequestInit = {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.FLY_BEARER_TOKEN}` },
-  }; // @todo
-  const response = await fetch(`${MACHINES_API_URL}/${id}/start`, init);
-  if (!response.ok) return console.error("La maquina no inició wtf", response);
-  console.log("WAITING_FOR_MACHINE_TO_START::");
-  return new Promise((res) =>
-    setTimeout(() => {
-      console.log("PERFORMANCE_MACHINE_READY::");
-      res(response.ok);
-    }, 10000)
-  );
-};
-
-const waitForMachineToStart = async (id: string, FLY_BEARER_TOKEN: string) => {
+const waitForMachineToStart = async (id: string) => {
   const init: RequestInit = {
     method: "GET",
-    headers: { Authorization: `Bearer ${FLY_BEARER_TOKEN}` },
+    headers: { Authorization: `Bearer ${process.env.FLY_BEARER_TOKEN}` },
   }; // @todo
   const response = await fetch(
     `${MACHINES_API_URL}/${id}/wait?state=started`,
@@ -197,10 +144,10 @@ const waitForMachineToStart = async (id: string, FLY_BEARER_TOKEN: string) => {
   );
 };
 
-const listMachinesAndFindImage = async (FLY_BEARER_TOKEN: string) => {
+const listMachinesAndFindImage = async () => {
   const init: RequestInit = {
     method: "GET",
-    headers: { Authorization: `Bearer ${FLY_BEARER_TOKEN}` },
+    headers: { Authorization: `Bearer ${process.env.FLY_BEARER_TOKEN}` },
   }; // @todo
   const response = await fetch(MACHINES_API_URL, init);
   if (!response.ok) {
