@@ -1,0 +1,22 @@
+{
+  "name": "video_converter_hono",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node ./dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "cross-env NODE_ENV=test vitest",
+    "build": "tsup ./src/index.ts --format esm"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "hono": "^4.6.20"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.4",
+    "@types/node": "^20.11.17",
+    "tsup": "^8.3.6",
+    "tsx": "^4.7.1",
+    "typescript": "^5.7.3"
+  }
+}
