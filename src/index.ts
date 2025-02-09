@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { startMachineCreationDetached } from "./flyMachines.js";
+import { startMachineCreationDetached, stopMachine } from "./flyMachines.js";
 import { env } from "hono/adapter";
 import dotenv from "dotenv";
 dotenv.config();
@@ -16,9 +16,15 @@ app.post("/internal", async (c) => {
   console.log("Internal called!");
   const url = new URL(c.req.url);
   const storageKey = url.searchParams.get("storageKey");
+  const machineId = url.searchParams.get("machineId");
   const size = url.searchParams.get("size");
 
-  console.log("About to work hard!" + storageKey + size);
+  console.log("About to work hard! 🦾" + storageKey + size + machineId);
+  //  detached work...
+  // stop machine
+  if (machineId) {
+    await stopMachine(machineId);
+  }
   return c.text("About to work hard!" + storageKey + size);
 });
 

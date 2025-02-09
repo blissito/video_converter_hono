@@ -31,8 +31,9 @@ export const startMachineCreationDetached = async (
     url.pathname = "/internal";
     url.searchParams.set("storageKey", "perro");
     url.searchParams.set("size", "360p");
+    url.searchParams.set("machineId", machineId);
     const res = await fetch(url.toString(), { method: "POST" }); // delegating
-    console.log("RESPONSE?", res);
+    console.log("::DELEGATION_RESPONSE::", res.ok);
   });
   await agenda.start();
   await agenda.schedule("in 1 second", "start_machine");
@@ -132,7 +133,7 @@ const createMachine = async ({
   return id;
 };
 
-const stopMachine = (machineId: string) => async () => {
+export const stopMachine = (machineId: string) => async () => {
   if (!machineId) return;
   const id: string = machineId;
   const init: RequestInit = {
