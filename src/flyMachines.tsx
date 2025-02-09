@@ -6,13 +6,13 @@ const MACHINES_API_URL =
   "https://api.machines.dev/v1/apps/video-converter-hono/machines";
 // const INTERNAL_WORKER_URL = `http://worker.process.video-converter-hono.internal:3000`;
 
-export const startMachineCreationDetached = async (
-  options: { storageKey: string; sizeName: string },
-  FLY_BEARER_TOKEN: string
-) => {
+export const startMachineCreationDetached = async (options: {
+  storageKey: string;
+  sizeName: string;
+  webhook?: string;
+}) => {
   const machineId = await createMachine({
-    image: await listMachinesAndFindImage(FLY_BEARER_TOKEN),
-    FLY_BEARER_TOKEN,
+    image: await listMachinesAndFindImage(),
   });
   if (!machineId) {
     throw new Error("ERROR_ON_MACHINE_CREATION");
@@ -23,8 +23,8 @@ export const startMachineCreationDetached = async (
     db: { address: process.env.DATABASE_URL as string },
   });
   agenda.define("start_machine", async () => {
-    console.info("WAITING::FOR::MACHINE::" + machineId);
-    await waitForMachineToStart(machineId, FLY_BEARER_TOKEN);
+    console.info("WAITING::FOR::MACHINE_TO_BE_REACHABLE::" + machineId);
+    await waitForMachineToStart(machineId);
     // @todo the real work...
     const INTERNAL_HOST = `http://${machineId}.vm.video-converter-hono.internal:8000`;
     const url = new URL(INTERNAL_HOST);
@@ -32,9 +32,10 @@ export const startMachineCreationDetached = async (
     url.searchParams.set("storageKey", options.storageKey);
     url.searchParams.set("sizeName", options.sizeName);
     url.searchParams.set("machineId", machineId);
+    options.webhook && url.searchParams.set("webhook", options.webhook);
     const res = await fetch(url.toString(), { method: "POST" }); // delegating
     if (!res.ok) {
-      await stopMachine(machineId, FLY_BEARER_TOKEN);
+      await stopMachine(machineId);
       console.log("::MACHINE_STOPED::");
     }
     console.log("::DELEGATION_RESPONSE::", res.ok);
@@ -63,11 +64,9 @@ export const createMachineAndWaitToBeReady = async (
 };
 
 const createMachine = async ({
-  FLY_BEARER_TOKEN,
   image,
-  guest = { cpu_kind: "shared", cpus: 1, memory_mb: 256 },
+  guest = { cpu_kind: "shared", cpus: 1, memory_mb: 512 },
 }: {
-  FLY_BEARER_TOKEN: string;
   guest?: {
     cpu_kind: "shared" | "performance";
     cpus: number;
@@ -78,7 +77,7 @@ const createMachine = async ({
   const init: RequestInit = {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${FLY_BEARER_TOKEN}`,
+      Authorization: `Bearer ${process.env.FLY_BEARER_TOKEN}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

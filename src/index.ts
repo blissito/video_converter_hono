@@ -5,7 +5,6 @@ import {
   stopMachine,
   type VIDEO_SIZE,
 } from "./flyMachines.js";
-import { env } from "hono/adapter";
 import { createHLSChunks } from "./video_utils.js";
 import { uploadChunks } from "./utils/uploadChunks.js";
 
@@ -21,6 +20,7 @@ app.post("/internal", async (c) => {
   const storageKey = url.searchParams.get("storageKey");
   const machineId = url.searchParams.get("machineId");
   const sizeName = url.searchParams.get("sizeName") as VIDEO_SIZE;
+  const webhook = url.searchParams.get("webhook");
 
   if (!storageKey || !sizeName || !machineId) return c.text("Bad Request", 400);
 
@@ -33,13 +33,14 @@ app.post("/internal", async (c) => {
         storageKey,
         tempFolder: playListPath,
         async onEnd() {
+          // @todo send request to webhook
           await stopMachine(machineId);
         },
       });
-      // await stopMachine(machineId);
     },
     async onError(error) {
       console.log("ERROR_ROUTE_LEVEL:", error);
+      // @todo send request to webhook
       await stopMachine(machineId);
     },
   });
@@ -50,15 +51,12 @@ app.post("/internal", async (c) => {
 // 1. create the machine and wait it to be ready
 app.post("/start", async (c) => {
   const body = await c.req.json();
-  const { FLY_BEARER_TOKEN } = env<{ FLY_BEARER_TOKEN: string }>(c); // hono compatibility with may clouds
-  const machineId = await startMachineCreationDetached(body, FLY_BEARER_TOKEN);
-
+  const machineId = await startMachineCreationDetached(body);
   if (!machineId) {
     return c.text("Error on machine creation", {
       status: 500,
     });
   }
-
   return c.json({
     machineId,
     ...body,
