@@ -65,7 +65,7 @@ export const createMachineAndWaitToBeReady = async (
 const createMachine = async ({
   FLY_BEARER_TOKEN,
   image,
-  guest = { cpu_kind: "shared", cpus: 1, memory_mb: 1024 },
+  guest = { cpu_kind: "shared", cpus: 1, memory_mb: 256 },
 }: {
   FLY_BEARER_TOKEN: string;
   guest?: {
@@ -108,7 +108,6 @@ const createMachine = async ({
 export const stopMachine = async (machineId: string) => {
   if (!machineId) return;
 
-  console.log("TENEMOSTOKEN", process.env.FLY_BEARER_TOKEN);
   const init: RequestInit = {
     method: "POST",
     headers: {
@@ -116,12 +115,11 @@ export const stopMachine = async (machineId: string) => {
     },
   };
   const response = await fetch(`${MACHINES_API_URL}/${machineId}/stop`, init);
-  console.log("STOP_RESPONSE::", response);
   if (!response.ok) {
-    console.error("La maquina no se detuvo", response);
+    console.error("La maquina no se detuvo", response.ok);
     return false;
   }
-  console.log("PERFORMANCE_MACHINE_STOPED");
+  console.log("MACHINE_STOPED");
   return true;
 };
 

@@ -4,6 +4,8 @@ import { Readable } from "stream";
 import { getReadURL } from "react-hook-multipart";
 import path from "path";
 import { nanoid } from "nanoid";
+import dotenv from "dotenv";
+dotenv.config();
 
 export type VideoFetched = {
   contentLength: string;
@@ -20,8 +22,8 @@ export const fetchVideo = async (storageKey: string): Promise<VideoFetched> => {
   try {
     getURL = await getReadURL(storageKey);
   } catch (e) {
-    console.log("ELERROR: ", e);
-    throw new Error("::ERROR_GETTING_READ_URL_FOR", storageKey);
+    console.log("ERROROEL: ", e);
+    throw new Error("::ERROR_GETTING_READ_URL_FOR" + storageKey);
   }
   const response = await fetch(getURL).catch((e) => console.error(e));
   console.log("::FILE_FETCHED::", response?.ok, storageKey);

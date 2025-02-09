@@ -6,9 +6,8 @@ import {
   type VIDEO_SIZE,
 } from "./flyMachines.js";
 import { env } from "hono/adapter";
-import dotenv from "dotenv";
 import { createHLSChunks } from "./video_utils.js";
-dotenv.config();
+import { uploadChunks } from "./utils/uploadChunks.js";
 
 const app = new Hono();
 
@@ -26,14 +25,18 @@ app.post("/internal", async (c) => {
   if (!storageKey || !sizeName || !machineId) return c.text("Bad Request", 400);
 
   //  detached work...
-  console.info("::DETACHING_VIDEO_CONVERTION::", machineId);
   createHLSChunks({
     storageKey,
     sizeName,
     onFinish: async (playListPath: string) => {
-      console.log("TODOS LOS CHUNKS AQUI: ", playListPath);
-      await stopMachine(machineId);
-      console.info("No se quiere apagar");
+      uploadChunks({
+        storageKey,
+        tempFolder: playListPath,
+        async onEnd() {
+          await stopMachine(machineId);
+        },
+      });
+      // await stopMachine(machineId);
     },
     async onError(error) {
       console.log("ERROR_ROUTE_LEVEL:", error);
@@ -41,7 +44,7 @@ app.post("/internal", async (c) => {
     },
   });
   // stop machine?
-  return c.text("OK");
+  return c.text(`CONVERSION_${sizeName}_STARTED_FOR_${storageKey}`);
 });
 
 // 1. create the machine and wait it to be ready
