@@ -48,7 +48,7 @@ app.post("/internal", async (c) => {
   return c.text(`CONVERSION_${sizeName}_STARTED_FOR_${storageKey}`);
 });
 
-// 1. create the machine and wait it to be ready
+// 1. create the machine and wait for it to be ready
 app.post("/start", async (c) => {
   const body = await c.req.json();
   const machineId = await startMachineCreationDetached(body);
@@ -58,6 +58,7 @@ app.post("/start", async (c) => {
     });
   }
   return c.json({
+    playlistURL: `https://fly.storage.tigris.dev/video-converter-hono/chunks/${body.storageKey}/${body.sizeName}.m3u8`,
     machineId,
     ...body,
   });
