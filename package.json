@@ -9,8 +9,11 @@
     "build": "tsup ./src/index.ts --format esm"
   },
   "dependencies": {
+    "@hokify/agenda": "^6.3.0",
     "@hono/node-server": "^1.13.8",
-    "hono": "^4.6.20"
+    "dotenv": "^16.4.7",
+    "hono": "^4.6.20",
+    "react-hook-multipart": "^0.0.29"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.7.4",

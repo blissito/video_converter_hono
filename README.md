@@ -1,4 +1,4 @@
-# Video HLS converter API built in Hono by the geeks of [fixter.org](http://fixter.org)
+# Video HLS converter API built in Hono by [fixter.org](http://fixter.org)
 
 > Web page: [`www.easybits.cloud`](https://www.easybits.cloud)
 
