@@ -101,7 +101,7 @@ const createMachine = async ({
   }
   const { name, id } = await response.json();
   console.log("::MAQUINA_CREADA::", name, id);
-  return id;
+  return { name, id };
 };
 // @todo revisit
 export const stopMachine = async (machineId: string) => {
