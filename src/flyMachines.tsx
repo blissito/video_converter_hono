@@ -11,7 +11,7 @@ export const startMachineCreationDetached = async (options: {
   sizeName: string;
   webhook?: string;
 }) => {
-  const machineId = await createMachine({
+  const { id: machineId, name: machineName } = await createMachine({
     image: await listMachinesAndFindImage(),
   });
   if (!machineId) {
@@ -43,7 +43,7 @@ export const startMachineCreationDetached = async (options: {
   await agenda.start();
   await agenda.schedule("in 1 second", "start_machine");
 
-  return machineId;
+  return { machineName, machineId };
 };
 
 export const createMachineAndWaitToBeReady = async (

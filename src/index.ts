@@ -51,8 +51,7 @@ app.post("/internal", async (c) => {
 // 1. create the machine and wait for it to be ready
 app.post("/start", async (c) => {
   const body = await c.req.json();
-  const { id: machineId, name: machineName } =
-    await startMachineCreationDetached(body);
+  const { machineId, machineName } = await startMachineCreationDetached(body);
   if (!machineId) {
     return c.text("Error on machine creation", {
       status: 500,

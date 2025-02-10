@@ -36,28 +36,6 @@ export const uploadChunks = async ({
     return r;
   });
   await Promise.all(promises);
-  //   for await (let chunkPath of chunkPaths) {
-  //     // @todo, try/catch?
-  //     let cloudPath: string[] | string = chunkPath.split("/").slice(1); // remove temp/
-  //     cloudPath.splice(cloudPath.length - 2, 1); // remove size/
-  //     cloudPath = cloudPath.join("/"); // chunks/:storageKey/(size)p_(d+).(m3u8|ts)
-  //     console.log("::CLOUD_PATH::", cloudPath);
-  //     const putURL = await getPutFileUrl(cloudPath);
-  //     const file = fs.readFileSync(chunkPath);
-  //     // @todo retry
-  //     const response = await put({
-  //       file,
-  //       putURL,
-  //     });
-
-  //     if (response.status === 403) {
-  //       console.log("UPLOAD_FORBIDDEN::", response.statusText);
-  //       break;
-  //     }
-  //     if (cleanUp) {
-  //       fs.rmSync(chunkPath, { recursive: true, force: true });
-  //     }
-  //   }
   console.log(`ALL_CHUNKS_UPLOADED ${chunkPaths.length} for: ${tempFolder}`);
   // update db stuff
   await onEnd?.();
