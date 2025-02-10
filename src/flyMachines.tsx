@@ -155,5 +155,8 @@ const listMachinesAndFindImage = async () => {
     );
   }
   const list = await response.json();
+  if (list.length < 1) {
+    throw new Error("No machines running, couldn`t find machine image");
+  }
   return list[0].config.image; // watch any updates in here [needs a machine to be running]
 };

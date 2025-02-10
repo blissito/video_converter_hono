@@ -51,6 +51,10 @@ app.post("/internal", async (c) => {
 // 1. create the machine and wait for it to be ready
 app.post("/start", async (c) => {
   const body = await c.req.json();
+  const AuthToken = c.req.header("Authorization");
+  // @todo correct auth
+  if (AuthToken !== "Bearer PerroTOken") return c.text("Forbidden", 403);
+
   const { machineId, machineName } = await startMachineCreationDetached(body);
   if (!machineId) {
     return c.text("Error on machine creation", {
