@@ -4,9 +4,9 @@ import {
   startMachineCreationDetached,
   stopMachine,
   type VIDEO_SIZE,
-} from "./flyMachines.js";
-import { createHLSChunks } from "./video_utils.js";
+} from "./utils/flyMachines.js";
 import { uploadChunks } from "./utils/uploadChunks.js";
+import { createHLSChunks } from "./utils/video_utils.js";
 
 const app = new Hono();
 

@@ -1,8 +1,8 @@
 import { Agenda } from "@hokify/agenda";
-import type { VIDEO_SIZE } from "./flyMachines.js";
 import fs from "fs";
 import Ffmpeg from "fluent-ffmpeg";
-import { fetchVideo } from "./utils/fetchVideo.js";
+import type { VIDEO_SIZE } from "./flyMachines.js";
+import { fetchVideo } from "./fetchVideo.js";
 
 export const CHUNKS_FOLDER = "chunks"; // @todo
 
