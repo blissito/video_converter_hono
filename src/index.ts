@@ -7,8 +7,12 @@ import {
 } from "./utils/flyMachines.js";
 import { uploadChunks } from "./utils/uploadChunks.js";
 import { createHLSChunks } from "./utils/video_utils.js";
+import { getMasterFileString } from "./utils/getMasterFileResponse.js";
 
+// @todo bearer token generation on a dashboard
 const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
+const CHUNKS_HOST =
+  "https://fly.storage.tigris.dev/video-converter-hono/chunks";
 
 const app = new Hono();
 
@@ -35,11 +39,16 @@ app.post("/internal", async (c) => {
         method: "post",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          sizeName,
+          masterPlaylistURL: `${CHUNKS_HOST}/${storageKey}/main.m3u8`, // @todo revisit
+          masterPlaylistContent: getMasterFileString({
+            versions: [sizeName],
+            storageKey,
+          }),
+          token: CONVERTION_TOKEN,
           storageKey,
           eventName,
+          sizeName,
           error,
-          token: CONVERTION_TOKEN,
         }),
       }));
   };
