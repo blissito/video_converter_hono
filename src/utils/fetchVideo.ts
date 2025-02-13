@@ -16,17 +16,22 @@ export type VideoFetched = {
 };
 
 // @todo: return cleanup!
-export const fetchVideo = async (storageKey: string): Promise<VideoFetched> => {
+export const fetchVideo = async (
+  storageKey: string,
+  Bucket: string | null = "easybits-dev"
+): Promise<VideoFetched> => {
   const tempPath = `temp/${nanoid(6)}/${storageKey}`;
   let getURL;
   try {
-    getURL = await getReadURL(storageKey);
+    console.log("PROVIDER_BUCKET:_", Bucket);
+    getURL = await getReadURL(storageKey, 900, { Bucket });
+    console.log("URL: ", getURL);
   } catch (e) {
-    console.log("ERROROEL: ", e);
+    console.log("ERROR_EL: ", e);
     throw new Error("::ERROR_GETTING_READ_URL_FOR" + storageKey);
   }
   const response = await fetch(getURL).catch((e) => console.error(e));
-  console.log("::FILE_FETCHED::", response?.ok, storageKey);
+  console.log("::FILE_FETCHED::", response.status, storageKey);
   if (!response?.body) {
     return {
       contentLength: "",

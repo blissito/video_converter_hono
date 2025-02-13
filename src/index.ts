@@ -8,6 +8,7 @@ import {
 import { uploadChunks } from "./utils/uploadChunks.js";
 import { createHLSChunks } from "./utils/video_utils.js";
 import { getMasterFileString } from "./utils/getMasterFileResponse.js";
+import { fetchVideo } from "./utils/fetchVideo.js";
 
 // @todo bearer token generation on a dashboard
 const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
@@ -27,6 +28,7 @@ app.post("/internal", async (c) => {
   const machineId = url.searchParams.get("machineId");
   const sizeName = url.searchParams.get("sizeName") as VIDEO_SIZE;
   const webhook = url.searchParams.get("webhook");
+  const Bucket = url.searchParams.get("Bucket");
 
   if (!storageKey || !sizeName || !machineId) return c.text("Bad Request", 400);
 
@@ -55,6 +57,7 @@ app.post("/internal", async (c) => {
 
   //  detached work...
   createHLSChunks({
+    Bucket, // @todo revisit used in fetchVideo
     storageKey,
     sizeName,
     onFinish: async (playListPath: string) => {
@@ -62,14 +65,13 @@ app.post("/internal", async (c) => {
         storageKey,
         tempFolder: playListPath,
         async onEnd() {
+          // @todo generate master playlist and upload it?
           await callWebHook("onEnd");
           await stopMachine(machineId);
         },
       });
     },
     async onError(error) {
-      console.log("ERROR_ROUTE_LEVEL:", error);
-
       await callWebHook("onError", error);
       await stopMachine(machineId);
     },
@@ -97,6 +99,14 @@ app.post("/start", async (c) => {
     machineName,
     ...body,
   });
+});
+
+app.get("/test", async (c) => {
+  const storageKey = await c.req.query("storageKey");
+  if (!storageKey) return c.text("Bad Request", 400);
+
+  const temp = await fetchVideo(storageKey, "easybits-dev");
+  return c.json(temp);
 });
 
 const port = 8000;

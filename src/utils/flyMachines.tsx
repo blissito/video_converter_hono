@@ -10,6 +10,7 @@ export const startMachineCreationDetached = async (options: {
   storageKey: string;
   sizeName: string;
   webhook?: string;
+  Bucket?: string;
 }) => {
   const { id: machineId, name: machineName } = await createMachine({
     image: await listMachinesAndFindImage(),
@@ -33,6 +34,7 @@ export const startMachineCreationDetached = async (options: {
     url.searchParams.set("sizeName", options.sizeName);
     url.searchParams.set("machineId", machineId);
     options.webhook && url.searchParams.set("webhook", options.webhook);
+    options.Bucket && url.searchParams.set("Bucket", options.Bucket);
     const res = await fetch(url.toString(), { method: "POST" }); // delegating
     if (!res.ok) {
       await stopMachine(machineId);

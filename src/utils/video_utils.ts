@@ -12,7 +12,9 @@ export const createHLSChunks = async ({
   when = "in 1 second",
   onError,
   onFinish,
+  Bucket,
 }: {
+  Bucket?: string | null;
   onError?: (error: unknown) => void;
   when?: string;
   sizeName?: VIDEO_SIZE;
@@ -40,7 +42,7 @@ export const createHLSChunks = async ({
     }
     const hlsSegmentFilename = `${outputFolder}/${sizeName}_%03d.ts`;
     const playListPath = `${outputFolder}/${sizeName}.m3u8`;
-    const { tempPath } = await fetchVideo(storageKey);
+    const { tempPath } = await fetchVideo(storageKey, Bucket);
     // <--
     if (!tempPath) {
       console.error("::ARCHIVO_NO_ENCONTRADO::", storageKey);
@@ -67,7 +69,7 @@ export const createHLSChunks = async ({
         );
       })
       .on("error", function (err) {
-        onError?.(new Error("ERROR_ON_MEDIA_PROCESSING"));
+        onError?.(err);
         console.error("ERROR_ON_MEDIA_PROCESSING: " + err.message);
       })
       .on("end", function () {
