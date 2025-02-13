@@ -8,6 +8,8 @@ import {
 import { uploadChunks } from "./utils/uploadChunks.js";
 import { createHLSChunks } from "./utils/video_utils.js";
 
+const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
+
 const app = new Hono();
 
 app.get("/", (c) => {
@@ -24,6 +26,24 @@ app.post("/internal", async (c) => {
 
   if (!storageKey || !sizeName || !machineId) return c.text("Bad Request", 400);
 
+  const callWebHook = async (
+    eventName: "onEnd" | "onError",
+    error?: unknown
+  ) => {
+    webhook &&
+      (await fetch(webhook, {
+        method: "post",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sizeName,
+          storageKey,
+          eventName,
+          error,
+          token: CONVERTION_TOKEN,
+        }),
+      }));
+  };
+
   //  detached work...
   createHLSChunks({
     storageKey,
@@ -33,14 +53,15 @@ app.post("/internal", async (c) => {
         storageKey,
         tempFolder: playListPath,
         async onEnd() {
-          // @todo send request to webhook
+          await callWebHook("onEnd");
           await stopMachine(machineId);
         },
       });
     },
     async onError(error) {
       console.log("ERROR_ROUTE_LEVEL:", error);
-      // @todo send request to webhook
+
+      await callWebHook("onError", error);
       await stopMachine(machineId);
     },
   });
