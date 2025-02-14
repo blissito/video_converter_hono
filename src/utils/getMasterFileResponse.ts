@@ -34,7 +34,7 @@ export const getMasterFileString = ({
     content += `#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=1280x720\n${HOST}/720p.m3u8\n`;
   }
   if (versions.includes("1080p")) {
-    content += `#EXT-X-STREAM-INF:BANDWIDTH=3500000,RESOLUTION=1920x1080\n${HOST}/1080p.m3u8`;
+    content += `#EXT-X-STREAM-INF:BANDWIDTH=3500000,RESOLUTION=1920x1080\n${HOST}/1080p.m3u8\n`;
   }
   return content;
 };

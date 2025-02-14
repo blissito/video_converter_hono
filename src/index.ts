@@ -58,7 +58,7 @@ app.post("/internal", async (c) => {
           versions: [sizeName],
           storageKey,
         }),
-        masterPlaylistURL: `${CHUNKS_HOST}/${storageKey}/main.m3u8`,
+        masterPlaylistURL: `${CHUNKS_HOST}/${storageKey}/main.m3u8`, // @todo generate it
       }),
     });
     console.log("RESPONSE", r.ok, r.status, r.statusText);
@@ -82,7 +82,7 @@ app.post("/internal", async (c) => {
       });
     },
     async onError(error) {
-      await callWebHook("onError", error);
+      await callWebHook("onError", new Error(error).message);
       await stopMachine(machineId);
     },
   });
