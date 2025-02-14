@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import {
   startMachineCreationDetached,
   stopMachine,
@@ -15,6 +16,14 @@ const CHUNKS_HOST =
   "https://fly.storage.tigris.dev/video-converter-hono/chunks";
 
 const app = new Hono();
+
+// CORS should be called before the route
+app.use(
+  "*",
+  cors({
+    origin: "*",
+  })
+);
 
 app.get("/", (c) => {
   return c.text("Hello Blissmo");
