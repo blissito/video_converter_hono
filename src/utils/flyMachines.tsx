@@ -1,5 +1,7 @@
 import { Agenda } from "@hokify/agenda";
 
+const GUEST_MACHINE = { cpu_kind: "shared", cpus: 1, memory_mb: 1024 }; // @todo dinamic , according to bitrate and vide size?
+
 export type VIDEO_SIZE = "360p" | "480p" | "720p" | "1080p" | "2040p";
 
 const MACHINES_API_URL =
@@ -67,7 +69,7 @@ export const createMachineAndWaitToBeReady = async (
 
 const createMachine = async ({
   image,
-  guest = { cpu_kind: "shared", cpus: 1, memory_mb: 512 },
+  guest = GUEST_MACHINE,
 }: {
   guest?: {
     cpu_kind: "shared" | "performance";
