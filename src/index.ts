@@ -8,7 +8,6 @@ import {
 import { uploadChunks } from "./utils/uploadChunks.js";
 import { createHLSChunks } from "./utils/video_utils.js";
 import { getMasterFileString } from "./utils/getMasterFileResponse.js";
-import { fetchVideo } from "./utils/fetchVideo.js";
 
 // @todo bearer token generation on a dashboard
 const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
@@ -24,35 +23,37 @@ app.get("/", (c) => {
 // 2. receive internal request
 app.post("/internal", async (c) => {
   const url = new URL(c.req.url);
-  const storageKey = url.searchParams.get("storageKey");
-  const machineId = url.searchParams.get("machineId");
+  const storageKey = url.searchParams.get("storageKey") as string;
+  const machineId = url.searchParams.get("machineId") as string;
   const sizeName = url.searchParams.get("sizeName") as VIDEO_SIZE;
-  const webhook = url.searchParams.get("webhook");
-  const Bucket = url.searchParams.get("Bucket");
+  const webhook = url.searchParams.get("webhook") as string;
+  const Bucket = url.searchParams.get("Bucket") as string;
 
   if (!storageKey || !sizeName || !machineId) return c.text("Bad Request", 400);
 
   const callWebHook = async (
     eventName: "onEnd" | "onError",
-    error?: unknown
+    error?: string
   ) => {
-    webhook &&
-      (await fetch(webhook, {
-        method: "post",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          masterPlaylistURL: `${CHUNKS_HOST}/${storageKey}/main.m3u8`, // @todo revisit
-          masterPlaylistContent: getMasterFileString({
-            versions: [sizeName],
-            storageKey,
-          }),
-          token: CONVERTION_TOKEN,
+    if (!webhook) return;
+
+    const r = await fetch(webhook, {
+      method: "put",
+      body: new URLSearchParams({
+        error: error || "0",
+        sizeName,
+        eventName,
+        storageKey,
+        token: CONVERTION_TOKEN,
+        masterPlaylistContent: getMasterFileString({
+          versions: [sizeName],
           storageKey,
-          eventName,
-          sizeName,
-          error,
         }),
-      }));
+        masterPlaylistURL: `${CHUNKS_HOST}/${storageKey}/main.m3u8`,
+      }),
+    });
+    console.log("RESPONSE", r.ok, r.status, r.statusText);
+    return r;
   };
 
   //  detached work...
@@ -101,12 +102,22 @@ app.post("/start", async (c) => {
   });
 });
 
-app.get("/test", async (c) => {
+app.post("/test", async (c) => {
   const storageKey = await c.req.query("storageKey");
   if (!storageKey) return c.text("Bad Request", 400);
 
-  const temp = await fetchVideo(storageKey, "easybits-dev");
-  return c.json(temp);
+  const response = await fetch(
+    "https://easybits.cloud/api/v1/conversion_webhook",
+    {
+      method: "PUT",
+      body: new URLSearchParams({
+        storageKey,
+        sizeName: "360p",
+        token: "pelusina69",
+      }),
+    }
+  );
+  return c.json(response);
 });
 
 const port = 8000;
