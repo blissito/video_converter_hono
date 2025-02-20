@@ -1,0 +1,134 @@
+import { createRequire } from "module";
+import { spawn } from "child_process";
+import path from "path";
+import {
+  buildBitrateParameters,
+  buildScalingString,
+  minMax,
+} from "../utils/encoder_utils.js";
+const require = createRequire(import.meta.url);
+
+export enum Version {
+  MOBILE = "360p",
+  SD = "480p",
+  HD = "720p",
+  FULL_HD = "1024p",
+}
+
+export enum EncodingSpeed { // -preset
+  FAST = "superfast",
+  MEDIUM = "medium",
+  SLOW = "veryslow",
+}
+
+export enum VideoStatus {
+  PENDING = 0,
+  ENCODING = 1,
+  DONE = 2,
+  ERROR = 3,
+}
+
+export type ConvertMP4Input = {
+  videoSourcePath: string;
+  storageKey: string; // no "/" should be present ?
+  versions: Version[];
+  encodingSpeed?: EncodingSpeed;
+  frameRate?: number;
+  segmentSize?: number;
+};
+export type ConvertMP4Return =
+  | {
+      hlspath: string;
+      storageKey?: string;
+      versions: Version[];
+    }
+  | {
+      error?: string | unknown;
+    };
+/**
+ * This should receive a fs path for a .mp4 or .mov video
+ */
+export function convertMP4({
+  videoSourcePath,
+  storageKey,
+  versions,
+  segmentSize = 6, // secs
+  frameRate = 25, // 25 default @todo check for it before? ffmpeg proof?
+  encodingSpeed = EncodingSpeed.MEDIUM,
+}: ConvertMP4Input): Promise<ConvertMP4Return> {
+  // create directories
+  console.info("::TRANSCODING::", storageKey);
+  // params validation
+  if (versions.length < 1)
+    return Promise.reject({ error: "No versions received" });
+
+  const ffmpegExec = path.join(path.dirname(require.resolve("ffmpeg-static")));
+  let hlspath = "";
+  const child = spawn(
+    ffmpegExec,
+    [
+      "-i",
+      `${videoSourcePath}`,
+      // usamos filter_complex para crear varios streams con diferentes resoluciones
+      "-filter_complex",
+      buildScalingString(versions),
+      // con el -preset definimos el framerate y segment duration
+      "-preset",
+      encodingSpeed, // @todo selectable
+      "-g",
+      minMax(frameRate, 5, 120),
+      "-sc_threshold",
+      "0",
+      // todos los bitrates con sus buffers
+      ...buildBitrateParameters(versions),
+      // El audio lo mantenemos igual con AAC
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-ac",
+      "2",
+      // Formato de salida con HLS 6s
+      "-f",
+      "hls",
+      "-hls_time",
+      minMax(segmentSize, 2, 8),
+      "-hls_playlist_type",
+      "event",
+      "-hls_flags",
+      "independent_segments",
+      // Estructura de los archivos @todo cambiar i por version
+      "-master_pl_name",
+      "main.m3u8",
+      "-hls_segment_filename",
+      `version_%v/data_%06d.ts`,
+      "-strftime_mkdir",
+      "1",
+      // Playlists names @todo cambiar por nombres
+      `stream_%v.m3u8`,
+    ],
+    { cwd: hlspath }
+  );
+
+  // regular conf
+  child.stdout.pipe(process.stdout);
+  child.stderr.pipe(process.stderr);
+
+  const resultPayload: ConvertMP4Return = {
+    hlspath,
+    versions,
+  };
+  return new Promise((res, rej) => {
+    child.once("error", (err: unknown) => {
+      resultPayload.error = err instanceof Error ? err.message : err;
+      return res(resultPayload);
+    });
+    child.once("exit", (code: number) => {
+      if (code === 0) {
+        return res(resultPayload);
+      } else {
+        return rej(`Error code: ${code}`);
+      }
+    });
+  });
+}
