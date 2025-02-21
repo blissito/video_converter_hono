@@ -100,7 +100,7 @@ app.post("/internal", async (c) => {
 app.post("/start", async (c) => {
   const body = await c.req.json();
   const AuthToken = c.req.header("Authorization");
-  // @todo correct auth
+  // @todo correct auth middleware?
   if (AuthToken !== "Bearer PerroTOken") return c.text("Forbidden", 403);
 
   const { machineId, machineName } = await startMachineCreationDetached(body);
