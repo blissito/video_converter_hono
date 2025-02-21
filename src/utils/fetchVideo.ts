@@ -13,6 +13,7 @@ export type VideoFetched = {
   ok: boolean;
   tempPath: string | null;
   fileStream?: WriteStream;
+  error?: Error;
 };
 
 // @todo: return cleanup!
@@ -22,22 +23,17 @@ export const fetchVideo = async (
 ): Promise<VideoFetched> => {
   const tempPath = `temp/${nanoid(6)}/${storageKey}`;
   let getURL;
-  try {
-    console.log("PROVIDER_BUCKET:_", Bucket);
-    getURL = await getReadURL(storageKey, 900, { Bucket });
-    console.log("URL: ", getURL);
-  } catch (e) {
-    console.log("ERROR_EL: ", e);
-    throw new Error("::ERROR_GETTING_READ_URL_FOR" + storageKey);
-  }
-  const response = await fetch(getURL).catch((e) => console.error(e));
+  console.log("PROVIDER_BUCKET:_", Bucket);
+  getURL = await getReadURL(storageKey, 900, { Bucket });
+  const response = await fetch(getURL);
   console.log("::FILE_FETCHED::", response.status, storageKey);
-  if (!response?.body) {
+  if (!response?.body || !response.ok) {
     return {
       contentLength: "",
       contentType: "",
       ok: false,
       tempPath: null,
+      error: new Error(response.status),
     };
   }
   //  create temp directory

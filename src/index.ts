@@ -9,6 +9,8 @@ import {
 import { uploadChunks } from "./utils/uploadChunks.js";
 import { createHLSChunks } from "./utils/video_utils.js";
 import { getMasterFileString } from "./utils/getMasterFileResponse.js";
+import { convertMP4, Version, type ConvertMP4Return } from "./lib/encoder.js";
+import { fetchVideo } from "./utils/fetchVideo.js";
 
 // @todo bearer token generation on a dashboard
 const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
@@ -127,6 +129,40 @@ app.post("/test", async (c) => {
     }
   );
   return c.json(response);
+});
+
+app.post("/multiple_test", async (c) => {
+  const storageKey = c.req.query("storageKey");
+  const bucket = c.req.query("bucket");
+  if (!storageKey || !bucket)
+    return c.text("Bad Request::" + storageKey + "::" + bucket, 400);
+
+  const { tempPath, ok, error } = await fetchVideo(storageKey, bucket); // can trhow?
+  if (!ok || !tempPath)
+    return c.text("::Error on fetching video::" + error?.message, 500);
+  // needs to be in this order to upload correctly...
+  const versions = [Version.MOBILE, Version.SD, Version.HD, Version.FULL_HD];
+  convertMP4({
+    storageKey,
+    versions,
+    videoSourcePath: tempPath,
+    onEnd: async ({ hlspath }: ConvertMP4Return) => {
+      console.log("WTF?::HLSPATH", hlspath);
+      await uploadChunks({
+        storageKey,
+        tempFolder: hlspath!,
+        onEnd: () => {
+          // update db / webhook
+          console.log("Webhook, We'r all set!");
+        },
+      });
+    },
+  });
+  return c.json({
+    status: "working",
+    storageKey,
+    versions,
+  });
 });
 
 const port = 8000;

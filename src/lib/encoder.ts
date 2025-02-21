@@ -1,18 +1,23 @@
 import { createRequire } from "module";
 import { spawn } from "child_process";
-import path from "path";
+import fs from "fs";
+
 import {
   buildBitrateParameters,
+  buildRenditionParams,
   buildScalingString,
+  buildStreamMap,
+  deleteVideoSource,
   minMax,
 } from "../utils/encoder_utils.js";
+import path from "path";
 const require = createRequire(import.meta.url);
 
 export enum Version {
   MOBILE = "360p",
   SD = "480p",
   HD = "720p",
-  FULL_HD = "1024p",
+  FULL_HD = "1080p",
 }
 
 export enum EncodingSpeed { // -preset
@@ -35,6 +40,7 @@ export type ConvertMP4Input = {
   encodingSpeed?: EncodingSpeed;
   frameRate?: number;
   segmentSize?: number;
+  onEnd?: (arg0: ConvertMP4Return) => void;
 };
 export type ConvertMP4Return =
   | {
@@ -43,18 +49,20 @@ export type ConvertMP4Return =
       versions: Version[];
     }
   | {
+      hlspath?: string;
       error?: string | unknown;
     };
 /**
  * This should receive a fs path for a .mp4 or .mov video
  */
 export function convertMP4({
+  onEnd,
   videoSourcePath,
   storageKey,
   versions,
   segmentSize = 6, // secs
   frameRate = 25, // 25 default @todo check for it before? ffmpeg proof?
-  encodingSpeed = EncodingSpeed.MEDIUM,
+  encodingSpeed = EncodingSpeed.FAST,
 }: ConvertMP4Input): Promise<ConvertMP4Return> {
   // create directories
   console.info("::TRANSCODING::", storageKey);
@@ -62,52 +70,73 @@ export function convertMP4({
   if (versions.length < 1)
     return Promise.reject({ error: "No versions received" });
 
-  const ffmpegExec = path.join(path.dirname(require.resolve("ffmpeg-static")));
-  let hlspath = "";
+  // const ffmpegExec = path.join(path.dirname(require.resolve("ffmpeg-static")));
+  //  create temp directory
+  const __dirname = path.dirname(videoSourcePath);
+  if (!fs.existsSync(__dirname)) {
+    fs.mkdirSync(__dirname, { recursive: true });
+  }
+  const video = videoSourcePath.replace(__dirname + "/", "");
   const child = spawn(
-    ffmpegExec,
+    "ffmpeg",
     [
       "-i",
-      `${videoSourcePath}`,
+      `${video}`,
       // usamos filter_complex para crear varios streams con diferentes resoluciones
       "-filter_complex",
       buildScalingString(versions),
-      // con el -preset definimos el framerate y segment duration
-      "-preset",
-      encodingSpeed, // @todo selectable
-      "-g",
-      minMax(frameRate, 5, 120),
-      "-sc_threshold",
-      "0",
+      // // con el -preset definimos el framerate y segment duration
+      // "-preset",
+      // encodingSpeed, // @todo selectable
+      // // "-g",
+      // minMax(frameRate, 5, 120),
+      // "-sc_threshold",
+      // "0",
       // todos los bitrates con sus buffers
-      ...buildBitrateParameters(versions),
-      // El audio lo mantenemos igual con AAC
-      "-c:a",
-      "aac",
-      "-b:a",
-      "128k",
-      "-ac",
-      "2",
+      ...buildBitrateParameters({ versions, encodingSpeed, frameRate }),
+      // ...buildRenditionParams({
+      //   segmentSize,
+      //   storageKey,
+      //   versions,
+      // }),
+      // mismo pa todos
+      // ...versions.map(() => ["-map", "a:0"]).flat(),
+      // ...versions.map(() => ["-map", "a:0"]).flat(),
+
+      // "-acodec",
+      // "copy",
+      // "-c:a", // El audio lo mantenemos igual con AAC
+      // "aac",
+      // "-b:a",
+      // "128k",
+      // "-ac",
+      // "2",
+      // "-acodec",
+      // "copy",
       // Formato de salida con HLS 6s
       "-f",
       "hls",
       "-hls_time",
       minMax(segmentSize, 2, 8),
       "-hls_playlist_type",
-      "event",
+      "vod",
+      // "event",
       "-hls_flags",
       "independent_segments",
-      // Estructura de los archivos @todo cambiar i por version
+      // // Estructura de los archivos @todo Cómo usar la versión? "temp/:id/360p_%04d.ts"
       "-master_pl_name",
-      "main.m3u8",
+      `main.m3u8`, // Esto reutiliza el directorio de playlist.m3u8
       "-hls_segment_filename",
-      `version_%v/data_%06d.ts`,
+      // `%v_%04d.ts`,
+      `%v_%04d.ts`,
       "-strftime_mkdir",
       "1",
+      "-var_stream_map",
+      buildStreamMap(versions),
       // Playlists names @todo cambiar por nombres
-      `stream_%v.m3u8`,
+      `playlist_%v.m3u8`,
     ],
-    { cwd: hlspath }
+    { cwd: __dirname }
   );
 
   // regular conf
@@ -115,7 +144,7 @@ export function convertMP4({
   child.stderr.pipe(process.stderr);
 
   const resultPayload: ConvertMP4Return = {
-    hlspath,
+    hlspath: `${__dirname}`,
     versions,
   };
   return new Promise((res, rej) => {
@@ -125,10 +154,16 @@ export function convertMP4({
     });
     child.once("exit", (code: number) => {
       if (code === 0) {
+        deleteVideoSource(videoSourcePath); // @todo check if improve
+        onEnd?.(resultPayload); // callback
         return res(resultPayload);
       } else {
         return rej(`Error code: ${code}`);
       }
+    });
+    child.on("data", (data: unknown) => {
+      // console.info("::PROCESSING_VIDEO::", data);
+      console.info("::PROCESSING_VIDEO::");
     });
   });
 }
