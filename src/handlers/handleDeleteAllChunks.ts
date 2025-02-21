@@ -31,6 +31,7 @@ type DeleteResponse = {
 export const handleDeleteAllChunks = async (c: Context) => {
   const AuthToken = c.req.header("Authorization");
   // @todo correct auth middleware?
+  // @todo publishable key
   if (AuthToken !== "Bearer PerroTOken")
     return c.text("Token is missing:" + AuthToken, 403);
 
@@ -54,7 +55,11 @@ export const handleDeleteAllChunks = async (c: Context) => {
 
     console.info("::ABOUT_TO_DELETE_OBJECTS::", list.KeyCount);
     const resul = await deleteObjects(undefined, list.Contents);
-    console.info("::OBJECTS_DELETED::", resul.Deleted.length);
+    console.info(
+      "::OBJECTS_DELETED::",
+      resul.Deleted.length,
+      "webhook::" + webhook
+    );
     webhook &&
       (await callWebHook({
         webhook,
