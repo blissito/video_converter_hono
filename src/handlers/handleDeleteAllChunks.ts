@@ -2,6 +2,7 @@
 import { listObjectsInFolder, deleteObjects } from "react-hook-multipart";
 import type { Context } from "hono";
 import { callWebHook } from "../utils/callWebhook.js";
+import { agendar } from "../utils/agendar.js";
 
 type S3Object = {
   Key: string;
@@ -42,14 +43,23 @@ export const handleDeleteAllChunks = async (c: Context) => {
     return c.text("Empty Folder", 404);
   }
 
-  console.info("::ABOUT_TO_DELETE_OBJECTS::", list.KeyCount);
-  const resul = await deleteObjects(undefined, list.Contents);
-  console.info("::OBJECTS_DELETED::", resul.Deleted.length);
-  webhook &&
-    (await callWebHook({
-      webhook,
-      eventName: "onDelete",
-      storageKey,
-    }));
-  return c.text("Working");
+  agendar(async () => {
+    webhook &&
+      (await callWebHook({
+        webhook,
+        eventName: "onStart",
+        storageKey,
+      }));
+
+    console.info("::ABOUT_TO_DELETE_OBJECTS::", list.KeyCount);
+    const resul = await deleteObjects(undefined, list.Contents);
+    console.info("::OBJECTS_DELETED::", resul.Deleted.length);
+    webhook &&
+      (await callWebHook({
+        webhook,
+        eventName: "onDelete",
+        storageKey,
+      }));
+  });
+  return c.text("Deleting");
 };
