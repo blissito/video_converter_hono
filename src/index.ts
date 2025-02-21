@@ -48,9 +48,6 @@ app.post("/internal", async (c) => {
     if (!webhook) return;
 
     const r = await fetch(webhook, {
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-      },
       method: "put",
       body: new URLSearchParams({
         error: error || "0",

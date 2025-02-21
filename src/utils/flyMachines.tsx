@@ -5,7 +5,12 @@ type GUEST = {
   cpus: number;
   memory_mb: number;
 };
-const GUEST_MACHINE: GUEST = { cpu_kind: "shared", cpus: 4, memory_mb: 2048 }; // @todo dinamic , according to bitrate and vide size?
+const GUEST_MACHINE: GUEST = {
+  cpu_kind: "performance",
+  cpus: 4,
+  memory_mb: 8192,
+}; // @todo dinamic , according to bitrate and vide size?
+// shared | performance
 
 export type VIDEO_SIZE = "360p" | "480p" | "720p" | "1080p" | "2040p";
 

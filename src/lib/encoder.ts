@@ -88,7 +88,7 @@ export function convertMP4({
       "-filter_complex",
       buildScalingString(versions),
       ...buildBitrateParameters({ versions, encodingSpeed, frameRate }),
-      ...versions.map(() => ["-map", "a:0"]).flat(),
+      ...versions.map(() => ["-map", "a:0?"]).flat(), // @todo if no audio it fails
       "-f",
       "hls",
       "-hls_time",
