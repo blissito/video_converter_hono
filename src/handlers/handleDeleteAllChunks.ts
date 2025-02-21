@@ -1,3 +1,4 @@
+// @ts-ignore
 import { listObjectsInFolder, deleteObjects } from "react-hook-multipart";
 import type { Context } from "hono";
 import { callWebHook } from "../utils/callWebhook.js";
