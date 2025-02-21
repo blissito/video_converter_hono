@@ -5,7 +5,6 @@ import fs from "fs";
 
 import {
   buildBitrateParameters,
-  buildRenditionParams,
   buildScalingString,
   buildStreamMap,
   deleteVideoSource,
@@ -42,6 +41,7 @@ export type ConvertMP4Input = {
   frameRate?: number;
   segmentSize?: number;
   onEnd?: (arg0: ConvertMP4Return) => void;
+  onStart?: (arg0: ConvertMP4Return) => void;
 };
 export type ConvertMP4Return =
   | {
@@ -59,6 +59,7 @@ export type ConvertMP4Return =
  */
 export function convertMP4({
   onEnd,
+  onStart,
   videoSourcePath,
   storageKey,
   versions,
@@ -78,6 +79,11 @@ export function convertMP4({
   if (!fs.existsSync(__dirname)) {
     fs.mkdirSync(__dirname, { recursive: true });
   }
+  const resultPayload: ConvertMP4Return = {
+    hlspath: `${__dirname}`,
+    versions,
+  };
+  onStart?.(resultPayload); // hook 🪝
   const video = videoSourcePath.replace(__dirname + "/", "");
   const child = spawn(
     "ffmpeg",
@@ -116,14 +122,10 @@ export function convertMP4({
   child.stdout.pipe(process.stdout);
   child.stderr.pipe(process.stderr);
 
-  const resultPayload: ConvertMP4Return = {
-    hlspath: `${__dirname}`,
-    versions,
-  };
   return new Promise((res, rej) => {
     child.once("error", (err: unknown) => {
       resultPayload.error = err instanceof Error ? err.message : err;
-      return res(resultPayload);
+      return rej(resultPayload);
     });
     child.once("exit", (code: number) => {
       if (code === 0) {

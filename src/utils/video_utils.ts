@@ -13,7 +13,9 @@ export const transcodeDetached = async ({
   storageKey,
   onError,
   onEnd,
+  onStart,
 }: {
+  onStart?: () => void;
   Bucket?: string | null;
   onError?: (error: unknown) => void;
   storageKey: string;
@@ -31,6 +33,7 @@ export const transcodeDetached = async ({
     }
 
     convertMP4({
+      // onStart,
       storageKey,
       versions: [Version.MOBILE, Version.SD, Version.HD, Version.FULL_HD],
       videoSourcePath: tempPath,
@@ -44,6 +47,7 @@ export const transcodeDetached = async ({
     });
   }); // define
   await agenda.start();
+  onStart?.(); // @hook 🪝
   await agenda.schedule("in 1 sec", "generate_hls_chunks", { storageKey });
 };
 

@@ -7,10 +7,11 @@ import {
   type VIDEO_SIZE,
 } from "./utils/flyMachines.js";
 import { uploadChunks } from "./utils/uploadChunks.js";
-import { createHLSChunks, transcodeDetached } from "./utils/video_utils.js";
+import { transcodeDetached } from "./utils/video_utils.js";
 import { getMasterFileString } from "./utils/getMasterFileResponse.js";
 import { convertMP4, Version, type ConvertMP4Return } from "./lib/encoder.js";
 import { fetchVideo } from "./utils/fetchVideo.js";
+import { handleDeleteAllChunks } from "./handlers/handleDeleteAllChunks.js";
 
 // @todo bearer token generation on a dashboard
 const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
@@ -42,7 +43,7 @@ app.post("/internal", async (c) => {
   if (!storageKey || !machineId) return c.text("Bad Request", 400);
 
   const callWebHook = async (
-    eventName: "onEnd" | "onError",
+    eventName: "onEnd" | "onError" | "onStart",
     error?: string
   ) => {
     if (!webhook) return;
@@ -61,7 +62,7 @@ app.post("/internal", async (c) => {
         masterPlaylistURL: `${CHUNKS_HOST}/${storageKey}/main.m3u8`,
       }),
     });
-    console.log("RESPONSE", r.ok, r.status, r.statusText);
+    console.info(`::WEBHOOK_RESPONSE::${r.ok}::${r.status}::${r.statusText}::`);
     return r;
   };
 
@@ -86,6 +87,9 @@ app.post("/internal", async (c) => {
         (error instanceof Error ? error : new Error(String(error))).message
       );
       await stopMachine(machineId);
+    },
+    async onStart() {
+      await callWebHook("onStart");
     },
   });
   // stop machine?
@@ -163,6 +167,8 @@ app.post("/multiple_test", async (c) => {
     versions,
   });
 });
+
+app.delete("/delete_all", handleDeleteAllChunks);
 
 const port = 8000;
 console.log(`Server is running on http://localhost:${port}`);

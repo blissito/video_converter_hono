@@ -16,7 +16,7 @@
     "fluent-ffmpeg": "^2.1.3",
     "hono": "^4.6.20",
     "nanoid": "^5.0.9",
-    "react-hook-multipart": "^0.0.38"
+    "react-hook-multipart": "^0.0.40"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.7.4",

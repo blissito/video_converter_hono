@@ -7,8 +7,8 @@ type GUEST = {
 };
 const GUEST_MACHINE: GUEST = {
   cpu_kind: "performance",
-  cpus: 4,
-  memory_mb: 8192,
+  cpus: 2,
+  memory_mb: 4096,
 }; // @todo dinamic , according to bitrate and vide size?
 // shared | performance
 

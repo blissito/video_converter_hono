@@ -108,7 +108,6 @@ const mapQuality2Bitrate = (q: Version) => {
 export const buildBitrateParameters = ({
   versions,
   encodingSpeed,
-  frameRate,
 }: {
   versions: Version[];
   encodingSpeed: string;
@@ -137,8 +136,8 @@ export const buildBitrateParameters = ({
     args.push(encodingSpeed);
     args.push("-g");
     args.push("48");
-    args.push("-threads");
-    args.push("4");
+    args.push("-threads"); // gold 🥇
+    args.push("2");
     args.push("-sc_threshold");
     args.push("0");
     args.push("-keyint_min");
