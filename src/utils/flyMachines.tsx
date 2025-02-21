@@ -1,6 +1,11 @@
 import { Agenda } from "@hokify/agenda";
 
-const GUEST_MACHINE = { cpu_kind: "shared", cpus: 1, memory_mb: 1024 }; // @todo dinamic , according to bitrate and vide size?
+type GUEST = {
+  cpu_kind: "shared" | "performance";
+  cpus: number;
+  memory_mb: number;
+};
+const GUEST_MACHINE: GUEST = { cpu_kind: "shared", cpus: 4, memory_mb: 2048 }; // @todo dinamic , according to bitrate and vide size?
 
 export type VIDEO_SIZE = "360p" | "480p" | "720p" | "1080p" | "2040p";
 
@@ -50,32 +55,28 @@ export const startMachineCreationDetached = async (options: {
   return { machineName, machineId };
 };
 
-export const createMachineAndWaitToBeReady = async (
-  FLY_BEARER_TOKEN: string
-) => {
-  console.log("REQUESTING::PERFORMANCE::MACHINE::");
-  const machineId = await createMachine({
-    image: await listMachinesAndFindImage(FLY_BEARER_TOKEN),
-    FLY_BEARER_TOKEN,
-  });
-  if (!machineId) {
-    console.error("ERROR_ON_MACHINE_CREACTION");
-    return null;
-  }
+// export const createMachineAndWaitToBeReady = async (
+//   FLY_BEARER_TOKEN: string
+// ) => {
+//   console.log("REQUESTING::PERFORMANCE::MACHINE::");
+//   const machineId = await createMachine({
+//     image: await listMachinesAndFindImage(),
+//     FLY_BEARER_TOKEN,
+//   });
+//   if (!machineId) {
+//     console.error("ERROR_ON_MACHINE_CREACTION");
+//     return null;
+//   }
 
-  await waitForMachineToStart(machineId, FLY_BEARER_TOKEN);
-  return machineId;
-};
+//   await waitForMachineToStart(machineId, FLY_BEARER_TOKEN);
+//   return machineId;
+// };
 
 const createMachine = async ({
   image,
   guest = GUEST_MACHINE,
 }: {
-  guest?: {
-    cpu_kind: "shared" | "performance";
-    cpus: number;
-    memory_mb: number;
-  };
+  guest?: GUEST;
   image: string;
 }) => {
   const init: RequestInit = {

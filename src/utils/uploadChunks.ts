@@ -1,4 +1,6 @@
+// @ts-ignore
 import { getPutFileUrl } from "react-hook-multipart";
+// @ts-ignore
 import fs from "fs";
 import path from "path";
 

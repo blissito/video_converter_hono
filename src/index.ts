@@ -7,7 +7,7 @@ import {
   type VIDEO_SIZE,
 } from "./utils/flyMachines.js";
 import { uploadChunks } from "./utils/uploadChunks.js";
-import { createHLSChunks } from "./utils/video_utils.js";
+import { createHLSChunks, transcodeDetached } from "./utils/video_utils.js";
 import { getMasterFileString } from "./utils/getMasterFileResponse.js";
 import { convertMP4, Version, type ConvertMP4Return } from "./lib/encoder.js";
 import { fetchVideo } from "./utils/fetchVideo.js";
@@ -36,11 +36,10 @@ app.post("/internal", async (c) => {
   const url = new URL(c.req.url);
   const storageKey = url.searchParams.get("storageKey") as string;
   const machineId = url.searchParams.get("machineId") as string;
-  const sizeName = url.searchParams.get("sizeName") as VIDEO_SIZE;
   const webhook = url.searchParams.get("webhook") as string;
   const Bucket = url.searchParams.get("Bucket") as string;
 
-  if (!storageKey || !sizeName || !machineId) return c.text("Bad Request", 400);
+  if (!storageKey || !machineId) return c.text("Bad Request", 400);
 
   const callWebHook = async (
     eventName: "onEnd" | "onError",
@@ -49,18 +48,20 @@ app.post("/internal", async (c) => {
     if (!webhook) return;
 
     const r = await fetch(webhook, {
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+      },
       method: "put",
       body: new URLSearchParams({
         error: error || "0",
-        sizeName,
         eventName,
         storageKey,
-        token: CONVERTION_TOKEN,
+        token: CONVERTION_TOKEN as string,
         masterPlaylistContent: getMasterFileString({
-          versions: [sizeName],
+          versions: ["360p", "480p", "720p", "1080p"],
           storageKey,
         }),
-        masterPlaylistURL: `${CHUNKS_HOST}/${storageKey}/main.m3u8`, // @todo generate it
+        masterPlaylistURL: `${CHUNKS_HOST}/${storageKey}/main.m3u8`,
       }),
     });
     console.log("RESPONSE", r.ok, r.status, r.statusText);
@@ -68,11 +69,10 @@ app.post("/internal", async (c) => {
   };
 
   //  detached work...
-  createHLSChunks({
+  transcodeDetached({
     Bucket, // @todo revisit used in fetchVideo
     storageKey,
-    sizeName,
-    onFinish: async (playListPath: string) => {
+    onEnd: async (playListPath: string) => {
       uploadChunks({
         storageKey,
         tempFolder: playListPath,
@@ -84,12 +84,15 @@ app.post("/internal", async (c) => {
       });
     },
     async onError(error) {
-      await callWebHook("onError", new Error(error).message);
+      await callWebHook(
+        "onError",
+        (error instanceof Error ? error : new Error(String(error))).message
+      );
       await stopMachine(machineId);
     },
   });
   // stop machine?
-  return c.text(`CONVERSION_${sizeName}_STARTED_FOR_${storageKey}`);
+  return c.text(`TRANSCODING_STARTED_FOR_${storageKey}`);
 });
 
 // 1. create the machine and wait for it to be ready
@@ -106,7 +109,7 @@ app.post("/start", async (c) => {
     });
   }
   return c.json({
-    playlistURL: `https://fly.storage.tigris.dev/video-converter-hono/chunks/${body.storageKey}/${body.sizeName}.m3u8`,
+    playlistURL: `https://fly.storage.tigris.dev/video-converter-hono/chunks/${body.storageKey}/main.m3u8`,
     machineId,
     machineName,
     ...body,
@@ -123,7 +126,6 @@ app.post("/test", async (c) => {
       method: "PUT",
       body: new URLSearchParams({
         storageKey,
-        sizeName: "360p",
         token: "pelusina69",
       }),
     }
@@ -137,7 +139,7 @@ app.post("/multiple_test", async (c) => {
   if (!storageKey || !bucket)
     return c.text("Bad Request::" + storageKey + "::" + bucket, 400);
 
-  const { tempPath, ok, error } = await fetchVideo(storageKey, bucket); // can trhow?
+  const { tempPath, ok, error } = await fetchVideo(storageKey, bucket);
   if (!ok || !tempPath)
     return c.text("::Error on fetching video::" + error?.message, 500);
   // needs to be in this order to upload correctly...

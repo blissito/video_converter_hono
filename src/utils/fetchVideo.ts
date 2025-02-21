@@ -1,6 +1,7 @@
 import fs, { WriteStream } from "fs";
 import { finished } from "stream/promises";
 import { Readable } from "stream";
+// @ts-ignore
 import { getReadURL } from "react-hook-multipart";
 import path from "path";
 import { nanoid } from "nanoid";
@@ -33,7 +34,7 @@ export const fetchVideo = async (
       contentType: "",
       ok: false,
       tempPath: null,
-      error: new Error(response.status),
+      error: new Error(String(response.status)),
     };
   }
   //  create temp directory

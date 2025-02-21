@@ -1,5 +1,6 @@
 import { createRequire } from "module";
 import { spawn } from "child_process";
+// @ts-ignore
 import fs from "fs";
 
 import {
@@ -47,6 +48,7 @@ export type ConvertMP4Return =
       hlspath: string;
       storageKey?: string;
       versions: Version[];
+      error?: string | unknown;
     }
   | {
       hlspath?: string;
@@ -85,35 +87,8 @@ export function convertMP4({
       // usamos filter_complex para crear varios streams con diferentes resoluciones
       "-filter_complex",
       buildScalingString(versions),
-      // // con el -preset definimos el framerate y segment duration
-      // "-preset",
-      // encodingSpeed, // @todo selectable
-      // // "-g",
-      // minMax(frameRate, 5, 120),
-      // "-sc_threshold",
-      // "0",
-      // todos los bitrates con sus buffers
       ...buildBitrateParameters({ versions, encodingSpeed, frameRate }),
-      // ...buildRenditionParams({
-      //   segmentSize,
-      //   storageKey,
-      //   versions,
-      // }),
-      // mismo pa todos
-      // ...versions.map(() => ["-map", "a:0"]).flat(),
-      // ...versions.map(() => ["-map", "a:0"]).flat(),
-
-      // "-acodec",
-      // "copy",
-      // "-c:a", // El audio lo mantenemos igual con AAC
-      // "aac",
-      // "-b:a",
-      // "128k",
-      // "-ac",
-      // "2",
-      // "-acodec",
-      // "copy",
-      // Formato de salida con HLS 6s
+      ...versions.map(() => ["-map", "a:0"]).flat(),
       "-f",
       "hls",
       "-hls_time",
@@ -123,16 +98,14 @@ export function convertMP4({
       // "event",
       "-hls_flags",
       "independent_segments",
-      // // Estructura de los archivos @todo Cómo usar la versión? "temp/:id/360p_%04d.ts"
       "-master_pl_name",
       `main.m3u8`, // Esto reutiliza el directorio de playlist.m3u8
       "-hls_segment_filename",
-      // `%v_%04d.ts`,
-      `%v_%04d.ts`,
+      `stream_%v_%04d.ts`,
       "-strftime_mkdir",
       "1",
       "-var_stream_map",
-      buildStreamMap(versions),
+      buildStreamMap(versions), // the most important!
       // Playlists names @todo cambiar por nombres
       `playlist_%v.m3u8`,
     ],

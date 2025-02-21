@@ -13,7 +13,8 @@ export function buildScalingString(versions: Version[]): string {
   versions.forEach((q, i) => {
     const [w, h] = mapQuality2Size(q);
     s += `[vtemp${i}]`; // Identificador de stream
-    s += i === 3 ? `copy` : `scale=w=${w}:h=${h}`; // escala del stream
+    s += `scale=w=${w}:h=${h}`; // escala del stream
+    // s += i === 3 ? `copy` : `scale=w=${w}:h=${h}`;
     s += `[vout${i}]`; // Identificador de salida (interno)
     if (i !== versions.length - 1) {
       s += ";"; // Separador entre instrucciones
@@ -142,16 +143,17 @@ export const buildBitrateParameters = ({
     args.push("48");
   });
 
-  versions.forEach((_, i) => {
-    args.push("-map");
-    args.push("a:0");
-    args.push(`-c:a:${i}`);
-    args.push(`aac`);
-    args.push(`-b:a:${i}`);
-    args.push(`96k`);
-    args.push(`-ac`);
-    args.push(`2`);
-  });
+  // @todo check if we can do this just once
+  // versions.forEach((_, i) => {
+  //   args.push("-map");
+  //   args.push("a:0");
+  //   args.push(`-c:a:${i}`);
+  //   args.push(`aac`);
+  //   args.push(`-b:a:${i}`);
+  //   args.push(`96k`);
+  //   args.push(`-ac`);
+  //   args.push(`2`);
+  // });
 
   return args;
 };
