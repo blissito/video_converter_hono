@@ -31,7 +31,8 @@ type DeleteResponse = {
 export const handleDeleteAllChunks = async (c: Context) => {
   const AuthToken = c.req.header("Authorization");
   // @todo correct auth middleware?
-  if (AuthToken !== "Bearer PerroTOken") return c.text("Forbidden", 403);
+  if (AuthToken !== "Bearer PerroTOken")
+    return c.text("Token is missing:" + AuthToken, 403);
 
   const storageKey = c.req.query("storageKey");
   const webhook = c.req.query("webhook");
