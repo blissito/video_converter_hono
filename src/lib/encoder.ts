@@ -65,7 +65,7 @@ export function convertMP4({
   versions,
   segmentSize = 6, // secs
   frameRate = 25, // 25 default @todo check for it before? ffmpeg proof?
-  encodingSpeed = EncodingSpeed.FAST,
+  encodingSpeed = EncodingSpeed.MEDIUM,
 }: ConvertMP4Input): Promise<ConvertMP4Return> {
   // create directories
   console.info("::TRANSCODING::", storageKey);
