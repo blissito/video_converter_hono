@@ -34,6 +34,7 @@ export const transcodeDetached = async ({
 
     convertMP4({
       // onStart,
+      onError,
       storageKey,
       versions: [Version.MOBILE, Version.SD, Version.HD, Version.FULL_HD],
       videoSourcePath: tempPath,

@@ -42,6 +42,7 @@ export type ConvertMP4Input = {
   segmentSize?: number;
   onEnd?: (arg0: ConvertMP4Return) => void;
   onStart?: (arg0: ConvertMP4Return) => void;
+  onError?: (arg0: ConvertMP4Return) => void;
 };
 export type ConvertMP4Return =
   | {
@@ -59,6 +60,7 @@ export type ConvertMP4Return =
  */
 export function convertMP4({
   onEnd,
+  onError,
   onStart,
   videoSourcePath,
   storageKey,
@@ -125,6 +127,7 @@ export function convertMP4({
   return new Promise((res, rej) => {
     child.once("error", (err: unknown) => {
       resultPayload.error = err instanceof Error ? err.message : err;
+      onError?.(resultPayload);
       return rej(resultPayload);
     });
     child.once("exit", (code: number) => {
