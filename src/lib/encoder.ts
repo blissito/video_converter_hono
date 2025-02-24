@@ -136,6 +136,7 @@ export function convertMP4({
         onEnd?.(resultPayload); // callback
         return res(resultPayload);
       } else {
+        onError?.(resultPayload);
         return rej(`Error code: ${code}`);
       }
     });
