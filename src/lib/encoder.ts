@@ -127,22 +127,25 @@ export function convertMP4({
   return new Promise((res, rej) => {
     child.once("error", (err: unknown) => {
       resultPayload.error = err instanceof Error ? err.message : err;
+      console.info("::ERROR_ON_CHILD::", err);
       onError?.(resultPayload);
       return rej(resultPayload);
     });
-    child.once("exit", (code: number) => {
+    child.once("exit", async (code: number) => {
       if (code === 0) {
+        console.info("::TRANSCODING_COMPLETED_SUCCESSFULlY::");
         deleteVideoSource(videoSourcePath); // @todo check if improve
         onEnd?.(resultPayload); // callback
         return res(resultPayload);
       } else {
-        onError?.(resultPayload);
+        console.info("::ERROR_WHEN_TRANSCODING_AUDIO_MAYBE::", code);
+        await onError?.(undefined);
         return rej(`Error code: ${code}`);
       }
     });
-    child.on("data", (data: unknown) => {
-      // console.info("::PROCESSING_VIDEO::", data);
-      console.info("::PROCESSING_VIDEO::");
-    });
+    // child.on("data", (data: unknown) => {
+    //   // console.info("::PROCESSING_VIDEO::", data);
+    //   // console.info("::PROCESSING_VIDEO::");
+    // });
   });
 }

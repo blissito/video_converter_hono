@@ -82,6 +82,7 @@ app.post("/internal", async (c) => {
       });
     },
     async onError(error) {
+      console.info("HANDLING_ERROR");
       await callWebHook(
         "onError",
         (error instanceof Error ? error : new Error(String(error))).message
