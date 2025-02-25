@@ -42,7 +42,7 @@ export type ConvertMP4Input = {
   segmentSize?: number;
   onEnd?: (arg0: ConvertMP4Return) => void;
   onStart?: (arg0: ConvertMP4Return) => void;
-  onError?: (arg0: ConvertMP4Return) => void;
+  onError?: (arg0?: ConvertMP4Return) => void;
 };
 export type ConvertMP4Return =
   | {
@@ -143,7 +143,7 @@ export function convertMP4({
         return res(resultPayload);
       } else {
         console.info("::ERROR_WHEN_TRANSCODING_AUDIO_MAYBE::", code);
-        await onError?.(undefined);
+        await onError?.();
         return rej(`Error code: ${code}`);
       }
     });
