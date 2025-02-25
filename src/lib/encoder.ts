@@ -90,6 +90,10 @@ export function convertMP4({
   const child = spawn(
     "ffmpeg",
     [
+      "-v",
+      "quiet",
+      "-loglevel",
+      "error",
       "-i",
       `${video}`,
       // usamos filter_complex para crear varios streams con diferentes resoluciones
