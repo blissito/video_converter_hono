@@ -91,7 +91,7 @@ app.get("/fake_event.m3u8", (c) => {
   if (getSegmentCounter() !== 0) {
     console.log("Avoided", getSegmentCounter());
   } else {
-    // addSegment();
+    addSegment();
   }
   return c.text(m3u8String);
 });
