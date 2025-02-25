@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { serveStatic } from "@hono/node-server/serve-static";
 import {
   startMachineCreationDetached,
   stopMachine,
@@ -12,6 +13,8 @@ import { getMasterFileString } from "./utils/getMasterFileResponse.js";
 import { convertMP4, Version, type ConvertMP4Return } from "./lib/encoder.js";
 import { fetchVideo } from "./utils/fetchVideo.js";
 import { handleDeleteAllChunks } from "./handlers/handleDeleteAllChunks.js";
+import { readFileSync, writeFileSync } from "fs";
+import path from "path";
 
 // @todo bearer token generation on a dashboard
 const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
@@ -28,8 +31,69 @@ app.use(
   })
 );
 
+app.use(
+  "*",
+  serveStatic({
+    root: "./public",
+  })
+);
+
 app.get("/", (c) => {
-  return c.text("Hello Blissmo");
+  const html = readFileSync(path.resolve("src/templates/live.html"));
+  return c.html(html.toString());
+});
+
+let segmentCounter = 0; // @todo should be db
+const getSegmentCounter = () => segmentCounter;
+const setSegmentCounter = (number: number) => (segmentCounter = number);
+app.get("/fake_event.m3u8", (c) => {
+  const addSegment = () => {
+    //     if (getSegmentCounter() === 0) {
+    //       writeFileSync(
+    //         "public/event.m3u8",
+    //         `#EXTM3U
+    // #EXT-X-PLAYLIST-TYPE:EVENT
+    // #EXT-X-VERSION:6
+    // #EXT-X-TARGETDURATION:6
+    // #EXT-X-MEDIA-SEQUENCE:0
+    // #EXT-X-INDEPENDENT-SEGMENTS`,
+    //         "utf-8"
+    //       );
+    //     }
+    console.log("Segment");
+    const m3u8String = readFileSync(path.resolve("public/event.m3u8"), "utf-8");
+    const segments = [
+      ["#EXTINF:6.400000,", "stream_0_0000.ts"],
+      ["#EXTINF:5.600000,", "stream_0_0001.ts"],
+      ["#EXTINF:3.000000,", "stream_0_0002.ts"],
+      ["#EXTINF:3.000000,", "stream_3_0020.ts"],
+      ["#EXTINF:6.400000,", "stream_3_0021.ts"],
+      ["#EXTINF:6.400000,", "stream_3_0022.ts"],
+      ["#EXTINF:5.600000,", "stream_3_0023.ts"],
+      ["#EXTINF:6.400000,", "stream_3_0024.ts"],
+      ["#EXTINF:5.600000,", "stream_3_0025.ts"],
+    ];
+    const segmentToInject = segments[segmentCounter].join("\n");
+    const appendedList = m3u8String + "\n" + segmentToInject;
+    writeFileSync("public/event.m3u8", appendedList, "utf-8");
+    console.log("Avers", getSegmentCounter());
+    setSegmentCounter(getSegmentCounter() + 1);
+    if (getSegmentCounter() >= segments.length) {
+      setSegmentCounter(0);
+      const appendedList = m3u8String + "\n" + "#EXT-X-ENDLIST";
+      // writeFileSync("public/event.m3u8", appendedList, "utf-8");
+      console.log("Finished", "#EXT-X-ENDLIST");
+      return;
+    }
+    setTimeout(addSegment, 6000);
+  };
+  const m3u8String = readFileSync(path.resolve("public/event.m3u8"), "utf-8");
+  if (getSegmentCounter() !== 0) {
+    console.log("Avoided", getSegmentCounter());
+  } else {
+    // addSegment();
+  }
+  return c.text(m3u8String);
 });
 
 // 2. receive internal request

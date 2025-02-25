@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .flex {
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+        flex-direction: column;
+        font-family: sans-serif;
+        font-size: 2rem;
+        height: 97vh;
+        padding: 0 16px;
+      }
+      .video {
+        border-radius: 16px;
+        border: 2px solid black;
+        height: 400px;
+        object-fit: contain;
+      }
+      .input {
+        padding: 8px 12px;
+        border: 2px solid black;
+        border-radius: 8px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      h1 {
+        text-align: center;
+      }
+    </style>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script> -->
+  </head>
+  <body>
+    <article class="flex">
+      <h1>Live Video perro</h1>
+      <video
+        autoplay
+        muted
+        src="http://localhost:8000/fake_event.m3u8"
+        class="video"
+        controls
+      ></video>
+      <form>
+        <input
+          class="input"
+          type="text"
+          value="http://localhost:8000/fake_event.m3u8"
+        />
+      </form>
+    </article>
+
+    <script>
+      //   if ( Hls.isSupported()) {
+      //     var input = document.querySelector("input");
+      //     console.info("HLS config set 🤓", input.value);
+      //     var video = document.getElementById("video");
+      //     var hls = new Hls();
+      //     hls.loadSource(input.value);
+      //     hls.attachMedia(video);
+      //     hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      //       video.play();
+      //     });
+      //   }
+    </script>
+  </body>
+</html>
