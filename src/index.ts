@@ -14,7 +14,9 @@ import { convertMP4, Version, type ConvertMP4Return } from "./lib/encoder.js";
 import { fetchVideo } from "./utils/fetchVideo.js";
 import { handleDeleteAllChunks } from "./handlers/handleDeleteAllChunks.js";
 import { readFileSync, writeFileSync } from "fs";
+import { createNodeWebSocket } from "@hono/node-ws";
 import path from "path";
+import { handleJoin, handleLeaveRoom } from "./utils/webRTC.js";
 
 // @todo bearer token generation on a dashboard
 const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
@@ -22,6 +24,7 @@ const CHUNKS_HOST =
   "https://fly.storage.tigris.dev/video-converter-hono/chunks";
 
 const app = new Hono();
+const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 // CORS should be called before the route
 app.use(
@@ -35,6 +38,32 @@ app.use(
   "*",
   serveStatic({
     root: "./public",
+  })
+);
+
+const rooms = new Map();
+type SocketMessage = {
+  intent: string;
+  peerId: string;
+  roomId: string;
+};
+// signaling stuff with hono helper socket
+app.get(
+  "/ws",
+  upgradeWebSocket((c) => {
+    return {
+      onMessage(event, socket) {
+        const { peerId, roomId, intent } = JSON.parse(
+          event.data as string
+        ) as SocketMessage;
+        switch (intent) {
+          case "join":
+            handleJoin({ socket, roomId, peerId, rooms });
+          case "leave_room":
+            handleLeaveRoom({ socket, roomId, peerId, rooms });
+        }
+      },
+    };
   })
 );
 
@@ -237,8 +266,12 @@ app.delete("/delete_all", handleDeleteAllChunks);
 
 const port = 8000;
 console.log(`Server is running on http://localhost:${port}`);
-
-serve({
+// serve({
+//   fetch: app.fetch,
+//   port,
+// });
+const server = serve({
   fetch: app.fetch,
   port,
 });
+injectWebSocket(server);

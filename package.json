@@ -11,6 +11,7 @@
   "dependencies": {
     "@hokify/agenda": "^6.3.0",
     "@hono/node-server": "^1.13.8",
+    "@hono/node-ws": "^1.1.0",
     "dotenv": "^16.4.7",
     "ffmpeg-static": "^5.2.0",
     "fluent-ffmpeg": "^2.1.3",

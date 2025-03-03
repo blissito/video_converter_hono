@@ -32,39 +32,42 @@
         text-align: center;
       }
     </style>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   </head>
   <body>
     <article class="flex">
       <h1>Live Video Blissmo</h1>
-      <video
-        autoplay
-        muted
-        src="https://video-converter-hono.fly.dev/fake_event.m3u8"
-        class="video"
-        controls
-      ></video>
+      <video muted autoplay class="video" controls></video>
       <form>
         <input
           class="input"
           type="text"
-          value="https://video-converter-hono.fly.dev/fake_event.m3u8"
+          value="http://localhost:8000/fake_event.m3u8"
         />
       </form>
     </article>
 
     <script>
-      //   if ( Hls.isSupported()) {
-      //     var input = document.querySelector("input");
-      //     console.info("HLS config set 🤓", input.value);
-      //     var video = document.getElementById("video");
-      //     var hls = new Hls();
-      //     hls.loadSource(input.value);
-      //     hls.attachMedia(video);
-      //     hls.on(Hls.Events.MANIFEST_PARSED, function () {
-      //       video.play();
-      //     });
-      //   }
+      var video = document.querySelector("video");
+      var input = document.querySelector("input");
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        console.info("Native player 📼");
+        video.src = input.value;
+      } else if (Hls.isSupported()) {
+        console.info("HLS config set 🤓", input.value);
+        var hls = new Hls({
+          liveSyncDurationCount: 6,
+          backBufferLength: 180,
+        });
+        hls.loadSource(input.value);
+        hls.attachMedia(video);
+        video.controls = false;
+        // hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        //   video.play();
+        // });
+      }
     </script>
   </body>
 </html>
+
+<!-- value="https://video-converter-hono.fly.dev/fake_event.m3u8" -->
