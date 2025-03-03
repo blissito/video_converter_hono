@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync } from "fs";
 import { createNodeWebSocket } from "@hono/node-ws";
 import path from "path";
 import { handleJoin, handleLeaveRoom } from "./utils/webRTC.js";
+import type { WSContext } from "hono/ws";
 
 // @todo bearer token generation on a dashboard
 const CONVERTION_TOKEN = process.env.CONVERTION_TOKEN;
@@ -48,6 +49,7 @@ type SocketMessage = {
   roomId: string;
 };
 // signaling stuff with hono helper socket
+const sockets: WSContext<WebSocket>[] = []; // @todo perr room
 app.get(
   "/ws",
   upgradeWebSocket((c) => {
@@ -58,9 +60,11 @@ app.get(
         ) as SocketMessage;
         switch (intent) {
           case "join":
-            handleJoin({ socket, roomId, peerId, rooms });
+            sockets.push(socket);
+            handleJoin({ sockets, roomId, peerId, rooms });
+            break;
           case "leave_room":
-            handleLeaveRoom({ socket, roomId, peerId, rooms });
+            handleLeaveRoom({ sockets, roomId, peerId, rooms });
         }
       },
     };

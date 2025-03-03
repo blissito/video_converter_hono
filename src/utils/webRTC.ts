@@ -2,67 +2,78 @@ type RoomHandler = {
   roomId: string;
   peerId: string;
   rooms: Map<string, { participants: Set<string> }>;
-  socket: WebSocket;
+  sockets: WSContext<WebSocket>[];
 };
 import fs from "fs";
+import type { WSContext } from "hono/ws";
 
-export const handleJoin = ({ roomId, peerId, socket, rooms }: RoomHandler) => {
-  if (rooms.has(roomId)) {
-    const room = rooms.get(roomId);
-    room!.participants.add(peerId);
-    broadcast(socket, { peerId, roomId, intent: "peer_joined" });
-  } else {
-    rooms.set(roomId, { participants: new Set([peerId]) });
-  }
+export const handleJoin = ({ sockets, roomId, peerId, rooms }: RoomHandler) => {
+  const participants = addPeer(roomId, peerId);
+  broadcast(sockets, { participants, roomId, intent: "peer_joined", peerId });
 };
 
-export const handleLeaveRoom = ({
-  socket,
-  roomId,
-  peerId,
-  rooms,
-}: RoomHandler) => {
-  if (!rooms.has(roomId)) return console.warn("No Room Found: " + roomId);
-
-  const room = rooms.get(roomId);
-  room!.participants?.delete(peerId);
-  rooms.set(roomId, room!);
-  broadcast(socket, {
-    roomId,
-    peerId,
-    intent: "peer_left",
-  });
+export const handleLeaveRoom = ({ sockets, roomId, peerId }: RoomHandler) => {
+  console.log("leaving");
+  const participants = removePeer(roomId, peerId);
+  broadcast(sockets, { peerId, participants, roomId, intent: "peer_left" });
 };
 
 const broadcast = (
-  socket: WebSocket,
+  sockets: WSContext<WebSocket>[],
   data: {
     roomId: string;
-    peerId: string;
+    participants: string[];
     intent: string;
-    room?: { participants: Set<string> };
+    peerId?: string;
   }
 ) => {
-  const { roomId, peerId, intent } = data || {};
-  const dir = "rooms";
+  const { roomId, participants, intent, peerId } = data || {};
+  sockets.map((socket) => {
+    socket.send(
+      JSON.stringify({
+        participants,
+        roomId,
+        intent,
+        peerId,
+      })
+    );
+  });
+};
+
+const addPeer = (roomId: string, peerId: string) => {
+  const dir = "rooms/";
+  const key = dir + roomId;
+  let participants;
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-
-  let participants;
   try {
-    participants = fs.readFileSync("rooms/" + roomId, "utf-8");
+    participants = fs.readFileSync(key, "utf-8");
   } catch (e) {
-    console.error(e);
-    fs.writeFileSync("rooms/" + roomId, `["${peerId}"]`);
+    console.info("::Room created::", roomId);
+    fs.writeFileSync(key, `[]`);
   }
-  participants = JSON.parse(fs.readFileSync("../" + roomId, "utf-8"));
-  socket.send(
-    JSON.stringify({
-      participants,
-      roomId,
-      peerId,
-      intent,
-    })
-  );
+  participants = JSON.parse(fs.readFileSync(key, "utf-8"));
+  participants.push(peerId);
+  fs.writeFileSync(key, JSON.stringify(participants));
+  return participants;
+};
+
+const removePeer = (roomId: string, peerId: string) => {
+  const dir = "rooms/";
+  const key = dir + roomId;
+  let participants;
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  try {
+    participants = fs.readFileSync(key, "utf-8");
+  } catch (e) {
+    console.info("::Room created::", roomId);
+    fs.writeFileSync(key, `[]`);
+  }
+  participants = JSON.parse(fs.readFileSync(key, "utf-8")) as string[];
+  participants = participants.filter((id) => id !== peerId);
+  fs.writeFileSync(key, JSON.stringify(participants));
+  return participants;
 };
