@@ -36,7 +36,7 @@ export const handleAnswer = ({
   socket,
   sockets,
 }: {
-  description: RTCSessionDescriptionInit;
+  description?: RTCSessionDescriptionInit;
   socket: WSContext<WebSocket>;
   sockets: WSContext<WebSocket>[];
 }) => {
@@ -53,7 +53,7 @@ export const handleCandidate = ({
   sockets,
   candidate,
 }: {
-  candidate: RTCIceCandidateInit;
+  candidate?: RTCIceCandidateInit;
   sockets: WSContext<WebSocket>[];
 }) => {
   sockets.forEach((s) => s.send(json({ candidate, intent: "candidate" })));
