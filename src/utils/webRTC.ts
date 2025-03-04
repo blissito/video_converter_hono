@@ -1,15 +1,62 @@
 type RoomHandler = {
   roomId: string;
   peerId: string;
-  rooms: Map<string, { participants: Set<string> }>;
   sockets: WSContext<WebSocket>[];
 };
 import fs from "fs";
 import type { WSContext } from "hono/ws";
 
-export const handleJoin = ({ sockets, roomId, peerId, rooms }: RoomHandler) => {
+const json = (data: Record<string, any>) => JSON.stringify(data);
+
+export const handleJoin = ({ sockets, roomId, peerId }: RoomHandler) => {
   const participants = addPeer(roomId, peerId);
   broadcast(sockets, { participants, roomId, intent: "peer_joined", peerId });
+};
+
+type Offer = {
+  roomId?: string;
+  description?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
+  socket: WSContext<WebSocket>;
+  sockets: WSContext<WebSocket>[];
+};
+export const handleOffer = (options: Offer) => {
+  const { sockets, description } = options || {};
+  // only firts client
+  sockets[0].send(
+    json({
+      intent: "offer",
+      description,
+    })
+  );
+};
+
+export const handleAnswer = ({
+  description,
+  socket,
+  sockets,
+}: {
+  description: RTCSessionDescriptionInit;
+  socket: WSContext<WebSocket>;
+  sockets: WSContext<WebSocket>[];
+}) => {
+  // only to guest
+  sockets[1].send(
+    json({
+      intent: "answer",
+      description,
+    })
+  );
+};
+
+export const handleCandidate = ({
+  sockets,
+  candidate,
+}: {
+  candidate: RTCIceCandidateInit;
+  sockets: WSContext<WebSocket>[];
+}) => {
+  sockets.forEach((s) => s.send(json({ candidate, intent: "candidate" })));
 };
 
 export const handleLeaveRoom = ({ sockets, roomId, peerId }: RoomHandler) => {
@@ -30,7 +77,7 @@ const broadcast = (
   const { roomId, participants, intent, peerId } = data || {};
   sockets.map((socket) => {
     socket.send(
-      JSON.stringify({
+      json({
         participants,
         roomId,
         intent,
@@ -50,11 +97,11 @@ const addPeer = (roomId: string, peerId: string) => {
   try {
     participants = fs.readFileSync(key, "utf-8");
   } catch (e) {
-    console.info("::Room created::", roomId);
     fs.writeFileSync(key, `[]`);
+    console.info("::Room created::", roomId);
   }
   participants = JSON.parse(fs.readFileSync(key, "utf-8"));
-  participants.push(peerId);
+  participants = participants.length < 1 ? [peerId] : [participants[0], peerId]; // revisit
   fs.writeFileSync(key, JSON.stringify(participants));
   return participants;
 };
@@ -76,4 +123,16 @@ const removePeer = (roomId: string, peerId: string) => {
   participants = participants.filter((id) => id !== peerId);
   fs.writeFileSync(key, JSON.stringify(participants));
   return participants;
+};
+
+const getRoom = (roomId: string) => {
+  const dir = "rooms/";
+  const key = dir + roomId;
+  let participants;
+  try {
+    participants = fs.readFileSync(key, "utf-8");
+  } catch (e) {
+    participants = "[]";
+  }
+  return JSON.parse(participants);
 };

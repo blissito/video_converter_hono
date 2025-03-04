@@ -5,7 +5,6 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import {
   startMachineCreationDetached,
   stopMachine,
-  type VIDEO_SIZE,
 } from "./utils/flyMachines.js";
 import { uploadChunks } from "./utils/uploadChunks.js";
 import { transcodeDetached } from "./utils/video_utils.js";
@@ -16,7 +15,13 @@ import { handleDeleteAllChunks } from "./handlers/handleDeleteAllChunks.js";
 import { readFileSync, writeFileSync } from "fs";
 import { createNodeWebSocket } from "@hono/node-ws";
 import path from "path";
-import { handleJoin, handleLeaveRoom } from "./utils/webRTC.js";
+import {
+  handleAnswer,
+  handleCandidate,
+  handleJoin,
+  handleLeaveRoom,
+  handleOffer,
+} from "./utils/webRTC.js";
 import type { WSContext } from "hono/ws";
 
 // @todo bearer token generation on a dashboard
@@ -47,6 +52,8 @@ type SocketMessage = {
   intent: string;
   peerId: string;
   roomId: string;
+  description?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
 };
 // signaling stuff with hono helper socket
 const sockets: WSContext<WebSocket>[] = []; // @todo perr room
@@ -55,16 +62,29 @@ app.get(
   upgradeWebSocket((c) => {
     return {
       onMessage(event, socket) {
-        const { peerId, roomId, intent } = JSON.parse(
+        const { peerId, roomId, intent, description, candidate } = JSON.parse(
           event.data as string
         ) as SocketMessage;
         switch (intent) {
           case "join":
             sockets.push(socket);
-            handleJoin({ sockets, roomId, peerId, rooms });
+            handleJoin({ sockets, roomId, peerId });
             break;
           case "leave_room":
-            handleLeaveRoom({ sockets, roomId, peerId, rooms });
+            handleLeaveRoom({ sockets, roomId, peerId });
+            break;
+          case "offer":
+            handleOffer({
+              description,
+              socket,
+              sockets,
+            });
+            break;
+          case "answer":
+            handleAnswer({ description, socket, sockets });
+            break;
+          case "candidate":
+            handleCandidate({ candidate, sockets });
         }
       },
     };
