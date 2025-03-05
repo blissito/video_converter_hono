@@ -21,6 +21,7 @@ import {
   handleJoin,
   handleLeaveRoom,
   handleOffer,
+  type Rooms,
 } from "./utils/webRTC.js";
 import type { WSContext } from "hono/ws";
 
@@ -47,7 +48,6 @@ app.use(
   })
 );
 
-const rooms = new Map();
 type SocketMessage = {
   intent: string;
   peerId: string;
@@ -56,35 +56,35 @@ type SocketMessage = {
   candidate?: RTCIceCandidateInit;
 };
 // signaling stuff with hono helper socket
-const sockets: WSContext<WebSocket>[] = []; // @todo perr room
+// const sockets: WSContext<WebSocket>[] = []; // @todo perr room
+const rooms: Rooms = {};
 app.get(
   "/ws",
   upgradeWebSocket((c) => {
     return {
       onMessage(event, socket) {
-        const { peerId, roomId, intent, description, candidate } = JSON.parse(
-          event.data as string
-        ) as SocketMessage;
-        switch (intent) {
+        const parsedData = JSON.parse(event.data as string);
+        switch (parsedData.intent) {
           case "join":
-            sockets.push(socket);
-            handleJoin({ sockets, roomId, peerId });
-            break;
-          case "leave_room":
-            handleLeaveRoom({ sockets, roomId, peerId });
+            handleJoin({
+              rooms,
+              socket,
+              data: parsedData,
+            });
             break;
           case "offer":
             handleOffer({
-              description,
+              rooms,
               socket,
-              sockets,
+              data: parsedData,
             });
             break;
           case "answer":
-            handleAnswer({ description, socket, sockets });
+            handleAnswer({ socket, rooms, data: parsedData });
             break;
           case "candidate":
-            handleCandidate({ candidate, sockets });
+            handleCandidate({ data: parsedData, rooms });
+            break;
         }
       },
     };

@@ -1,90 +1,109 @@
-type RoomHandler = {
+export type Peer = {
+  id: string;
+  socket: WSContext<WebSocket>;
   roomId: string;
-  peerId: string;
-  sockets: WSContext<WebSocket>[];
+  isFirst: boolean;
 };
+
+export type Rooms = { [x: string]: Room };
+export type Room = [Peer] | [Peer, Peer];
+
+export type SwitchData = {
+  socket?: WSContext<WebSocket>;
+  rooms: Rooms;
+  data: any;
+};
+
 import fs from "fs";
 import type { WSContext } from "hono/ws";
+import { nanoid } from "nanoid";
 
 const json = (data: Record<string, any>) => JSON.stringify(data);
 
-export const handleJoin = ({ sockets, roomId, peerId }: RoomHandler) => {
-  const participants = addPeer(roomId, peerId);
-  broadcast(sockets, { participants, roomId, intent: "peer_joined", peerId });
+export const handleJoin = ({ rooms, socket, data }: SwitchData) => {
+  const { roomId } = data;
+  const peer = createPeer(socket, roomId);
+  console.info(`::NEW_PEER::${peer.id}::REQUESTED_ROOM::${roomId}`, rooms);
+  // 1. get or create room
+  if (rooms[roomId]) {
+    if (rooms[roomId].length >= 2) {
+      signal("rejected", socket, {});
+      return;
+    } else if (rooms[roomId]) {
+      rooms[roomId][1] = peer;
+      broadcast("peer_joined", rooms[roomId]);
+      signal("create_offer", socket); // socket at hand 🤷🏻
+    }
+  } else {
+    peer.isFirst = true; // is first
+    rooms[roomId] = [peer];
+  }
+  let p = { ...peer, socket: undefined }; // avoid circular json
+  signal("joined", socket, { roomId, p });
 };
+
+const signal = (
+  intent: string,
+  socket: WSContext<WebSocket>,
+  data: any = {}
+) => {
+  socket.send(json({ ...data, intent }));
+};
+
+const broadcast = (intent: string, room: Room) => {
+  room.map(({ socket }) => {
+    signal(intent, socket, {
+      participants: room.map((p) => p.id),
+    });
+  });
+};
+
+const createPeer = (socket: WSContext<WebSocket>, roomId: string) => ({
+  id: nanoid(3),
+  socket,
+  roomId,
+  isFirst: false,
+});
+
+////////////////////////////////
 
 type Offer = {
-  roomId?: string;
-  description?: RTCSessionDescriptionInit;
-  candidate?: RTCIceCandidateInit;
+  data: { description: unknown; roomId: string };
   socket: WSContext<WebSocket>;
-  sockets: WSContext<WebSocket>[];
+  rooms: Rooms;
 };
 export const handleOffer = (options: Offer) => {
-  const { sockets, description } = options || {};
-  // only firts client
-  sockets[0].send(
-    json({
-      intent: "offer",
-      description,
-    })
-  );
+  const {
+    rooms,
+    data: { description, roomId },
+  } = options || {};
+  const room = rooms[roomId];
+  signal("answer_the_offer", room[0].socket, { description });
 };
 
-export const handleAnswer = ({
-  description,
-  socket,
-  sockets,
-}: {
-  description?: RTCSessionDescriptionInit;
-  socket: WSContext<WebSocket>;
-  sockets: WSContext<WebSocket>[];
-}) => {
-  // only to guest
-  sockets[1].send(
-    json({
-      intent: "answer",
-      description,
-    })
-  );
+export const handleAnswer = ({ data, socket, rooms }: SwitchData) => {
+  const { description, roomId } = data;
+  const room = rooms[roomId];
+  if (!room || !room[1]) return; // @todo trigger rollback?
+  // send answer to caller
+  signal("connect", room[1].socket, { description });
+  console.log("::CONNECT_SENT::");
 };
 
-export const handleCandidate = ({
-  sockets,
-  candidate,
-}: {
-  candidate?: RTCIceCandidateInit;
-  sockets: WSContext<WebSocket>[];
-}) => {
-  sockets.forEach((s) => s.send(json({ candidate, intent: "candidate" })));
+export const handleCandidate = ({ rooms, data }: SwitchData) => {
+  const { candidate, roomId } = data;
+  const room = rooms[roomId];
+  if (!room) return;
+
+  room.forEach((p) => {
+    signal("candidate", p.socket, { candidate });
+  });
 };
 
 export const handleLeaveRoom = ({ sockets, roomId, peerId }: RoomHandler) => {
   console.log("leaving");
   const participants = removePeer(roomId, peerId);
   broadcast(sockets, { peerId, participants, roomId, intent: "peer_left" });
-};
-
-const broadcast = (
-  sockets: WSContext<WebSocket>[],
-  data: {
-    roomId: string;
-    participants: string[];
-    intent: string;
-    peerId?: string;
-  }
-) => {
-  const { roomId, participants, intent, peerId } = data || {};
-  sockets.map((socket) => {
-    socket.send(
-      json({
-        participants,
-        roomId,
-        intent,
-        peerId,
-      })
-    );
-  });
 };
 
 const addPeer = (roomId: string, peerId: string) => {
