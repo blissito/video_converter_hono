@@ -556,81 +556,67 @@ const handleDeleteAllChunks = async (c) => {
 };
 
 const json = (data) => JSON.stringify(data);
-const handleJoin = ({ sockets, roomId, peerId }) => {
-    const participants = addPeer(roomId, peerId);
-    broadcast(sockets, { participants, roomId, intent: "peer_joined", peerId });
+const handleJoin = ({ rooms, socket, data }) => {
+    const { roomId } = data;
+    const peer = createPeer(socket, roomId);
+    console.info(`::NEW_PEER::${peer.id}::REQUESTED_ROOM::${roomId}`, rooms);
+    // 1. get or create room
+    if (rooms[roomId]) {
+        if (rooms[roomId].length >= 2) {
+            signal("rejected", socket, {});
+            return;
+        }
+        else if (rooms[roomId]) {
+            rooms[roomId][1] = peer;
+            broadcast("peer_joined", rooms[roomId]);
+            signal("create_offer", socket); // socket at hand 🤷🏻
+        }
+    }
+    else {
+        peer.isFirst = true; // is first
+        rooms[roomId] = [peer];
+    }
+    let p = { ...peer, socket: undefined }; // avoid circular json
+    signal("joined", socket, { roomId, p });
 };
-const handleOffer = (options) => {
-    const { sockets, description } = options || {};
-    // only firts client
-    sockets[0].send(json({
-        intent: "offer",
-        description,
-    }));
+const signal = (intent, socket, data = {}) => {
+    socket.send(json({ ...data, intent }));
 };
-const handleAnswer = ({ description, socket, sockets, }) => {
-    // only to guest
-    sockets[1].send(json({
-        intent: "answer",
-        description,
-    }));
-};
-const handleCandidate = ({ sockets, candidate, }) => {
-    sockets.forEach((s) => s.send(json({ candidate, intent: "candidate" })));
-};
-const handleLeaveRoom = ({ sockets, roomId, peerId }) => {
-    console.log("leaving");
-    const participants = removePeer(roomId, peerId);
-    broadcast(sockets, { peerId, participants, roomId, intent: "peer_left" });
-};
-const broadcast = (sockets, data) => {
-    const { roomId, participants, intent, peerId } = data || {};
-    sockets.map((socket) => {
-        socket.send(json({
-            participants,
-            roomId,
-            intent,
-            peerId,
-        }));
+const broadcast = (intent, room) => {
+    room.map(({ socket }) => {
+        signal(intent, socket, {
+            participants: room.map((p) => p.id),
+        });
     });
 };
-const addPeer = (roomId, peerId) => {
-    const dir = "rooms/";
-    const key = dir + roomId;
-    let participants;
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-    try {
-        participants = fs.readFileSync(key, "utf-8");
-    }
-    catch (e) {
-        fs.writeFileSync(key, `[]`);
-        console.info("::Room created::", roomId);
-    }
-    participants = JSON.parse(fs.readFileSync(key, "utf-8"));
-    participants = participants.length < 1 ? [peerId] : [participants[0], peerId]; // revisit
-    fs.writeFileSync(key, JSON.stringify(participants));
-    return participants;
+const createPeer = (socket, roomId) => ({
+    id: nanoid(3),
+    socket,
+    roomId,
+    isFirst: false,
+});
+const handleOffer = (options) => {
+    const { rooms, data: { description, roomId }, } = options || {};
+    const room = rooms[roomId];
+    signal("answer_the_offer", room[0].socket, { description });
 };
-const removePeer = (roomId, peerId) => {
-    const dir = "rooms/";
-    const key = dir + roomId;
-    let participants;
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-    try {
-        participants = fs.readFileSync(key, "utf-8");
-    }
-    catch (e) {
-        console.info("::Room created::", roomId);
-        fs.writeFileSync(key, `[]`);
-    }
-    participants = JSON.parse(fs.readFileSync(key, "utf-8"));
-    participants = participants.filter((id) => id !== peerId);
-    fs.writeFileSync(key, JSON.stringify(participants));
-    return participants;
+const handleAnswer = ({ data, socket, rooms }) => {
+    const { description, roomId } = data;
+    const room = rooms[roomId];
+    if (!room || !room[1])
+        return; // @todo trigger rollback?
+    // send answer to caller
+    signal("connect", room[1].socket, { description });
+    console.log("::CONNECT_SENT::");
+};
+const handleCandidate = ({ rooms, data }) => {
+    const { candidate, roomId } = data;
+    const room = rooms[roomId];
+    if (!room)
+        return;
+    room.forEach((p) => {
+        signal("candidate", p.socket, { candidate });
+    });
 };
 
 // @todo bearer token generation on a dashboard
@@ -646,31 +632,33 @@ app.use("*", serveStatic({
     root: "./public",
 }));
 // signaling stuff with hono helper socket
-const sockets = []; // @todo perr room
+// const sockets: WSContext<WebSocket>[] = []; // @todo perr room
+const rooms = {};
 app.get("/ws", upgradeWebSocket((c) => {
     return {
         onMessage(event, socket) {
-            const { peerId, roomId, intent, description, candidate } = JSON.parse(event.data);
-            switch (intent) {
+            const parsedData = JSON.parse(event.data);
+            switch (parsedData.intent) {
                 case "join":
-                    sockets.push(socket);
-                    handleJoin({ sockets, roomId, peerId });
-                    break;
-                case "leave_room":
-                    handleLeaveRoom({ sockets, roomId, peerId });
+                    handleJoin({
+                        rooms,
+                        socket,
+                        data: parsedData,
+                    });
                     break;
                 case "offer":
                     handleOffer({
-                        description,
+                        rooms,
                         socket,
-                        sockets,
+                        data: parsedData,
                     });
                     break;
                 case "answer":
-                    handleAnswer({ description, socket, sockets });
+                    handleAnswer({ socket, rooms, data: parsedData });
                     break;
                 case "candidate":
-                    handleCandidate({ candidate, sockets });
+                    handleCandidate({ socket, data: parsedData, rooms });
+                    break;
             }
         },
     };

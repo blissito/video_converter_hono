@@ -9,7 +9,7 @@ export type Rooms = { [x: string]: Room };
 export type Room = [Peer] | [Peer, Peer];
 
 export type SwitchData = {
-  socket?: WSContext<WebSocket>;
+  socket: WSContext<WebSocket>;
   rooms: Rooms;
   data: any;
 };
@@ -100,10 +100,10 @@ export const handleCandidate = ({ rooms, data }: SwitchData) => {
   });
 };
 
-export const handleLeaveRoom = ({ sockets, roomId, peerId }: RoomHandler) => {
+export const handleLeaveRoom = ({ sockets, roomId, peerId }: any) => {
   console.log("leaving");
   const participants = removePeer(roomId, peerId);
-  broadcast(sockets, { peerId, participants, roomId, intent: "peer_left" });
+  // broadcast(sockets, {  roomId, intent: "peer_left" });
 };
 
 const addPeer = (roomId: string, peerId: string) => {

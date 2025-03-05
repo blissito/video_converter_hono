@@ -83,7 +83,7 @@ app.get(
             handleAnswer({ socket, rooms, data: parsedData });
             break;
           case "candidate":
-            handleCandidate({ data: parsedData, rooms });
+            handleCandidate({ socket, data: parsedData, rooms });
             break;
         }
       },
